@@ -123,7 +123,7 @@ export const ROUTES = {
     name: 'Nido infestado',
     risk: 'danger',
     text: 'Más cuerpo, más vida y más velocidad. Si limpias el sector, recuperas 1 muestra de mutación.',
-    apply: config => { config.segmentBonus += 4; config.hpMultiplier *= 1.1; config.speedMultiplier *= 1.08; },
+    apply: config => { config.segmentBonus += 4; config.hpMultiplier *= 1.1; config.speedMultiplier *= 1.08; config.nestCount = 3; config.nestHp = 95; },
     salvage: 1,
   },
 };
@@ -165,6 +165,7 @@ export function createGame(options = {}) {
     },
     encounter: null,
     segments: [],
+    objectives: [],
     bullets: [],
     events: [],
     upgrades: [],
@@ -219,6 +220,16 @@ export function spawnSector(s) {
   s.player = { x: 600, y: 625 };
 
   const count = config.segments + config.segmentBonus;
+  const nestPositions = [{ x: 310, y: 255 }, { x: 600, y: 445 }, { x: 890, y: 255 }];
+  s.objectives = Array.from({ length: config.nestCount || 0 }, (_, i) => ({
+    id: `nest-${s.uid++}`,
+    type: 'nest',
+    x: nestPositions[i % nestPositions.length].x,
+    y: nestPositions[i % nestPositions.length].y,
+    hp: (config.nestHp || 80) * config.hpMultiplier,
+    maxHp: (config.nestHp || 80) * config.hpMultiplier,
+    flash: 0,
+  }));
   s.encounterState = {
     initialSegments: count,
     pressureTimer: 8,
@@ -361,6 +372,27 @@ export function damage(s, id, amount, source = 'shot') {
   if (explosion) neighbors.forEach(next => damage(s, next, explosion, 'explosion'));
 }
 
+function damageObjective(s, id, amount, source = 'basic') {
+  const obj = s.objectives.find(o => o.id === id);
+  if (!obj) return false;
+  const dealt = Math.min(obj.hp, amount);
+  obj.hp -= dealt;
+  obj.flash = .09;
+  s.score += Math.round(dealt);
+  if (isBasicSource(source)) gainUltimate(s, dealt * s.buster.basic.ultimateGain);
+  s.events.push({ type: 'objective-hit', objective: obj.type, x: obj.x, y: obj.y, amount: dealt, source });
+  if (obj.hp <= .0001) {
+    s.objectives = s.objectives.filter(o => o.id !== id);
+    s.score += 180;
+    s.events.push({ type: 'objective-break', objective: obj.type, x: obj.x, y: obj.y });
+  }
+  return true;
+}
+
+function encounterComplete(s) {
+  return s.segments.length === 0 && s.objectives.length === 0;
+}
+
 function nearestTarget(s) {
   return [...s.segments]
     .filter(n => n.d >= 0)
@@ -386,7 +418,7 @@ export function activateAbility(s) {
   s.abilityCooldown = s.buster.ability.cooldown;
   s.events.push({ type: 'ability', id: s.buster.ability.id });
   s.events.push({ type: 'pulse' });
-  if (!s.segments.length) finishSector(s);
+  if (encounterComplete(s)) finishSector(s);
   return true;
 }
 
@@ -410,7 +442,7 @@ export function activateUltimate(s) {
     damage(s, n.id, ultimate.damage, 'ultimate');
   }
   s.events.push({ type: 'ultimate', id: ultimate.id, x: center.x, y: center.y, hits: targets.length, radius: ultimate.radius });
-  if (!s.segments.length) finishSector(s);
+  if (encounterComplete(s)) finishSector(s);
   return true;
 }
 
@@ -547,40 +579,49 @@ export function update(s, dt, input = {}) {
   s.head += (config.speed * config.speedMultiplier + s.sectorTime * config.accel) * ruleEffects.speed * dt;
   placeSegments(s);
   for (const seg of s.segments) seg.flash = Math.max(0, seg.flash - dt);
+  for (const obj of s.objectives) obj.flash = Math.max(0, obj.flash - dt);
 
   for (const b of s.bullets) {
     const ox = b.x, oy = b.y;
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     b.life -= dt;
-    let first = null, nearest = Infinity;
+    let first = null, nearest = Infinity, firstKind = '';
 
     for (const seg of s.segments) {
       if (seg.d < 0) continue;
       const t = segmentCircleHit(ox, oy, b.x, b.y, seg.x, seg.y, 23);
-      if (t !== null && t < nearest) { first = seg; nearest = t; }
+      if (t !== null && t < nearest) { first = seg; nearest = t; firstKind = 'segment'; }
+    }
+    for (const obj of s.objectives) {
+      const t = segmentCircleHit(ox, oy, b.x, b.y, obj.x, obj.y, 29);
+      if (t !== null && t < nearest) { first = obj; nearest = t; firstKind = 'objective'; }
     }
 
     if (first) {
       b.life = 0;
       s.hits++;
-      const idx = s.segments.indexOf(first);
-      const neighbors = [...s.segments]
-        .filter(n => n.id !== first.id && n.d >= 0)
-        .sort((a, c) => Math.abs(s.segments.indexOf(a) - idx) - Math.abs(s.segments.indexOf(c) - idx))
-        .slice(0, s.buster.basic.chain);
+      if (firstKind === 'objective') {
+        damageObjective(s, first.id, s.buster.basic.damage, 'basic');
+      } else {
+        const idx = s.segments.indexOf(first);
+        const neighbors = [...s.segments]
+          .filter(n => n.id !== first.id && n.d >= 0)
+          .sort((a, c) => Math.abs(s.segments.indexOf(a) - idx) - Math.abs(s.segments.indexOf(c) - idx))
+          .slice(0, s.buster.basic.chain);
 
-      damage(s, first.id, s.buster.basic.damage, 'basic');
-      for (const n of neighbors) {
-        s.events.push({ type: 'arc', x: first.x, y: first.y, tx: n.x, ty: n.y });
-        damage(s, n.id, s.buster.basic.damage * s.buster.basic.chainScale, 'basic-chain');
+        damage(s, first.id, s.buster.basic.damage, 'basic');
+        for (const n of neighbors) {
+          s.events.push({ type: 'arc', x: first.x, y: first.y, tx: n.x, ty: n.y });
+          damage(s, n.id, s.buster.basic.damage * s.buster.basic.chainScale, 'basic-chain');
+        }
       }
     }
   }
 
   s.bullets = s.bullets.filter(b => b.life > 0 && b.x > -20 && b.x < WIDTH + 20 && b.y > -20 && b.y < HEIGHT + 20);
-  if (!s.segments.length) finishSector(s);
-  else if (s.head >= PATH_LENGTH) {
+  if (encounterComplete(s)) finishSector(s);
+  else if (s.segments.length && s.head >= PATH_LENGTH) {
     s.phase = 'lost';
     s.bullets = [];
     s.events.push({ type: 'end' });
