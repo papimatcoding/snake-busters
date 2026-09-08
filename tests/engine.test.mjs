@@ -65,7 +65,7 @@ test('Volt basic, ability and ultimate are separate runtime systems', () => {
   assert.equal(s.buster.basic.projectiles, 3);
   assert.equal(s.buster.basic.name, 'Tridente Tesla');
   assert.equal(s.buster.ability.name, 'Sobrecarga');
-  assert.equal(s.buster.ultimate.chargeMax, 120);
+  assert.equal(s.buster.ultimate.chargeMax, 140);
 
   const armor = s.segments.find(n => n.type === 'armor');
   const hp = armor.hp;
@@ -79,10 +79,13 @@ test('Volt basic, ability and ultimate are separate runtime systems', () => {
   assert.deepEqual(s.segments.map(n => n.hp), after);
   assert.equal(s.abilityCooldown, s.buster.ability.cooldown);
 
+  const ultTarget = s.segments.find(n => n.d >= 0);
+  s.aim = { x: ultTarget.x, y: ultTarget.y };
   s.ultimateCharge = s.buster.ultimate.chargeMax;
   assert.equal(activateUltimate(s), true);
   assert.equal(s.ultimateCharge, 0);
-  assert.ok(s.events.some(e => e.type === 'ultimate'));
+  assert.ok(s.events.some(e => e.type === 'ultimate-zone'));
+  assert.ok(s.events.some(e => e.type === 'ultimate-bolt'));
   assert.equal(activateUltimate(s), false);
 });
 
@@ -111,6 +114,23 @@ test('Volt spends one ammo charge to fire a three-ray Tesla Trident volley', () 
 
   for (let i = 0; i < Math.ceil(s.buster.basic.ammoReload / STEP) + 2; i++) update(s, STEP);
   assert.equal(s.ammo, 1);
+});
+
+test('Volt ultimate is aimed and only damages segments inside its AOE', () => {
+  const s = createGame();
+  startGame(s);
+  const visible = s.segments.filter(n => n.d >= 0);
+  assert.ok(visible.length >= 2);
+  const target = visible[0];
+  const far = visible.find(n => Math.hypot(n.x - target.x, n.y - target.y) > s.buster.ultimate.radius + 20);
+  assert.ok(far, 'test needs a segment outside the AOE');
+  const farHp = far.hp;
+
+  s.aim = { x: target.x, y: target.y };
+  s.ultimateCharge = s.buster.ultimate.chargeMax;
+  assert.equal(activateUltimate(s), true);
+  assert.equal(far.hp, farHp);
+  assert.ok(s.events.some(e => e.type === 'ultimate-zone' && e.radius === s.buster.ultimate.radius));
 });
 
 test('only basic damage charges Volt ultimate', () => {
