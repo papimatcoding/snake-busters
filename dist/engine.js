@@ -105,8 +105,28 @@ export function getEncounterConfig(s) {
     volatileEvery: e.volatileEvery || 99,
   };
   for (const id of s.run.mutations) MUTATIONS[id]?.apply(c);
+  if (s.run.routeModifier?.sector === s.run.sector) ROUTES[s.run.routeModifier.id]?.apply(c);
   return c;
 }
+
+export const ROUTES = {
+  maintenance: {
+    id: 'maintenance',
+    name: 'Conducto de mantenimiento',
+    risk: 'safe',
+    text: 'Ruta estable: Greenfang avanza un 10 % más lento en el siguiente sector.',
+    apply: config => { config.speedMultiplier *= .9; },
+    salvage: 0,
+  },
+  'infested-nest': {
+    id: 'infested-nest',
+    name: 'Nido infestado',
+    risk: 'danger',
+    text: 'Más cuerpo, más vida y más velocidad. Si limpias el sector, recuperas 1 muestra de mutación.',
+    apply: config => { config.segmentBonus += 4; config.hpMultiplier *= 1.1; config.speedMultiplier *= 1.08; },
+    salvage: 1,
+  },
+};
 
 export const UPGRADES = [
   { id: 'chain', name: 'Arco doble', icon: '↯', text: 'Cada rayo del Tridente salta a un vecino adicional.', apply: s => s.buster.basic.chain++ },
@@ -138,6 +158,10 @@ export function createGame(options = {}) {
       cleared: [],
       mutations: [],
       encounterHistory: [],
+      routeChoices: [],
+      routeHistory: [],
+      routeModifier: null,
+      salvage: 0,
     },
     encounter: null,
     segments: [],
@@ -239,11 +263,32 @@ export function chooseUpgrade(s, id) {
   if (s.phase !== 'upgrade' || !s.choices.includes(id)) return false;
   const u = UPGRADES.find(u => u.id === id);
   if (!u) return false;
+  const clearedSector = s.run.sector;
   u.apply(s);
   s.upgrades.push(id);
-  applyMutationAfterSector(s, s.run.sector);
+  applyMutationAfterSector(s, clearedSector);
+
+  if (clearedSector === 2) {
+    s.phase = 'route';
+    s.run.routeChoices = ['maintenance', 'infested-nest'];
+    s.events.push({ type: 'route-choice', sector: clearedSector, choices: [...s.run.routeChoices] });
+    return true;
+  }
+
   s.run.sector++;
   spawnSector(s);
+  return true;
+}
+
+export function chooseRoute(s, id) {
+  if (s.phase !== 'route' || !s.run.routeChoices.includes(id) || !ROUTES[id]) return false;
+  const nextSector = s.run.sector + 1;
+  s.run.routeModifier = { id, sector: nextSector };
+  s.run.routeHistory.push({ afterSector: s.run.sector, routeId: id, targetSector: nextSector });
+  s.run.routeChoices = [];
+  s.run.sector = nextSector;
+  spawnSector(s);
+  s.events.push({ type: 'route-selected', id, sector: nextSector });
   return true;
 }
 
@@ -255,6 +300,13 @@ function finishSector(s) {
   s.score += bonus;
   if (!s.run.cleared.includes(sector)) s.run.cleared.push(sector);
   s.events.push({ type: 'clear', sector, encounter: s.encounter, bonus });
+  if (s.run.routeModifier?.sector === sector) {
+    const route = ROUTES[s.run.routeModifier.id];
+    if (route?.salvage) {
+      s.run.salvage += route.salvage;
+      s.events.push({ type: 'route-reward', routeId: route.id, salvage: route.salvage });
+    }
+  }
 
   if (sector >= TOTAL_SECTORS) {
     s.phase = 'won';
