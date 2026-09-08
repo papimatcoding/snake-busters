@@ -62,14 +62,16 @@ test('Volt basic, ability and ultimate are separate runtime systems', () => {
   startGame(s);
 
   assert.equal(s.buster.basic.ammoMax, 3);
+  assert.equal(s.buster.basic.projectiles, 3);
+  assert.equal(s.buster.basic.name, 'Tridente Tesla');
   assert.equal(s.buster.ability.name, 'Sobrecarga');
-  assert.equal(s.buster.ultimate.chargeMax, 100);
+  assert.equal(s.buster.ultimate.chargeMax, 120);
 
   const armor = s.segments.find(n => n.type === 'armor');
   const hp = armor.hp;
-  damage(s, armor.id, 20, 'shot');
+  damage(s, armor.id, 20, 'basic');
   assert.equal(armor.hp, hp - 15);
-  assert.ok(s.ultimateCharge > 0, 'dealing damage should charge the ultimate');
+  assert.ok(s.ultimateCharge > 0, 'basic damage should charge the ultimate');
 
   assert.equal(activateAbility(s), true);
   const after = s.segments.map(n => n.hp);
@@ -84,12 +86,19 @@ test('Volt basic, ability and ultimate are separate runtime systems', () => {
   assert.equal(activateUltimate(s), false);
 });
 
-test('Volt has three rechargeable ammo charges and cannot fire while empty', () => {
+test('Volt spends one ammo charge to fire a three-ray Tesla Trident volley', () => {
   const s = createGame();
   startGame(s);
   assert.equal(s.ammo, 3);
 
-  for (let i = 0; i < 3; i++) {
+  s.fireTimer = 0;
+  update(s, STEP, { fire: true, aim: { x: 600, y: 250 } });
+  assert.equal(s.ammo, 2);
+  assert.equal(s.shots, 1);
+  assert.equal(s.bullets.length, 3);
+  assert.deepEqual(s.bullets.map(b => b.source), ['basic', 'basic', 'basic']);
+
+  for (let i = 0; i < 2; i++) {
     s.fireTimer = 0;
     update(s, STEP, { fire: true, aim: { x: 600, y: 250 } });
   }
@@ -102,6 +111,20 @@ test('Volt has three rechargeable ammo charges and cannot fire while empty', () 
 
   for (let i = 0; i < Math.ceil(s.buster.basic.ammoReload / STEP) + 2; i++) update(s, STEP);
   assert.equal(s.ammo, 1);
+});
+
+test('only basic damage charges Volt ultimate', () => {
+  const s = createGame();
+  startGame(s);
+  const ids = s.segments.slice(0, 4).map(n => n.id);
+
+  damage(s, ids[0], 10, 'ability');
+  damage(s, ids[1], 10, 'ultimate');
+  damage(s, ids[2], 10, 'explosion');
+  assert.equal(s.ultimateCharge, 0);
+
+  damage(s, ids[3], 10, 'basic-chain');
+  assert.ok(s.ultimateCharge > 0);
 });
 
 test('clearing a sector preserves the run build and mutates Greenfang before the next encounter', () => {
@@ -121,7 +144,7 @@ test('clearing a sector preserves the run build and mutates Greenfang before the
   assert.ok(s.run.mutations.includes('plated-scales'));
   assert.equal(s.run.mutations.length, 1);
   assert.equal(s.ultimateCharge, 41, 'ultimate charge persists between sectors');
-  assert.ok(s.buster.basic.damage > 24, 'Buster build persists between sectors');
+  assert.ok(s.buster.basic.damage > 11, 'Buster build persists between sectors');
   assert.equal(MUTATIONS[s.run.mutations[0]].name, 'Escamas blindadas');
 
   const config = getEncounterConfig(s);
