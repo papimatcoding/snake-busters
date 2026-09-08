@@ -64,13 +64,16 @@ jobs:
           fi
           echo "Smoke metrics:"
           grep -o 'data-smoke[^>]*' /tmp/snake-busters-dom.html || true
-          "$BROWSER" --headless --no-sandbox --disable-gpu --window-size=771,493 --virtual-time-budget=2600 --screenshot=/tmp/snake-busters-smoke.png "http://127.0.0.1:3000/?smoke=1"
+          "$BROWSER" --headless --no-sandbox --disable-gpu --window-size=771,493 --virtual-time-budget=1200 --screenshot=/tmp/snake-busters-title.png "http://127.0.0.1:3000/"
+          "$BROWSER" --headless --no-sandbox --disable-gpu --window-size=771,493 --virtual-time-budget=1200 --screenshot=/tmp/snake-busters-lobby.png "http://127.0.0.1:3000/?preview=lobby"
+          "$BROWSER" --headless --no-sandbox --disable-gpu --window-size=771,493 --virtual-time-budget=1200 --screenshot=/tmp/snake-busters-outbreak.png "http://127.0.0.1:3000/?preview=outbreak"
+          "$BROWSER" --headless --no-sandbox --disable-gpu --window-size=771,493 --virtual-time-budget=2600 --screenshot=/tmp/snake-busters-game.png "http://127.0.0.1:3000/?smoke=1"
 
-      - name: Upload smoke screenshot
+      - name: Upload visual review screenshots
         uses: actions/upload-artifact@v4
         with:
-          name: snake-busters-smoke
-          path: /tmp/snake-busters-smoke.png
+          name: snake-busters-visual-review
+          path: /tmp/snake-busters-*.png
           retention-days: 7
 
       - name: Upload static site
