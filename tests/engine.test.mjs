@@ -239,21 +239,29 @@ test('Toxic Sewers sectors have distinct runtime rules', () => {
   split.run.sector = 3;
   spawnSector(split);
   startGame(split);
-  split.segments = split.segments.slice(0, Math.ceil(split.encounterState.initialSegments * .6));
-  placeSegments(split);
-  const splitBefore = split.segments.length;
-  update(split, STEP);
-  assert.equal(split.encounterState.splitTriggered, true);
-  assert.equal(split.segments.length, splitBefore + 4);
-  assert.ok(split.events.some(e => e.type === 'split'));
+  assert.equal(split.encounterState.splitLanes, 2);
+  assert.equal(split.encounterState.laneHeads.length, 2);
+  assert.deepEqual([...new Set(split.segments.map(n => n.lane))].sort(), [0, 1]);
+  const headsBefore = [...split.encounterState.laneHeads];
+  for (let i = 0; i < 120; i++) update(split, STEP);
+  assert.ok(split.encounterState.laneHeads[0] > headsBefore[0]);
+  assert.ok(split.encounterState.laneHeads[1] > headsBefore[1]);
+  const lane0 = split.segments.find(n => n.lane === 0 && n.d >= 0);
+  const lane1 = split.segments.find(n => n.lane === 1 && n.d >= 0);
+  assert.ok(lane0 && lane1);
+  assert.notEqual(Math.round(lane0.y), Math.round(lane1.y));
 
-  const sump = createGame();
-  sump.run.sector = 4;
-  spawnSector(sump);
-  startGame(sump);
-  for (let i = 0; i < 120 * 7.2 && sump.phase === 'playing'; i++) update(sump, STEP);
-  assert.ok(sump.encounterState.sludgeActive > 0);
-  assert.ok(sump.events.some(e => e.type === 'sludge'));
+  const hunt = createGame();
+  hunt.run.sector = 4;
+  spawnSector(hunt);
+  startGame(hunt);
+  assert.ok(hunt.encounterState.huntTarget > 0);
+  assert.ok(hunt.encounterState.huntTimer > 0);
+  while (hunt.phase === 'playing' && hunt.segments.length) {
+    damage(hunt, hunt.segments[0].id, 180, 'ability');
+  }
+  assert.equal(hunt.phase, 'upgrade');
+  assert.ok(hunt.events.some(e => e.type === 'hunt-complete'));
 
   const alpha = createGame();
   alpha.run.sector = 5;
