@@ -177,6 +177,7 @@ export function createGame(options = {}) {
     encounter: null,
     segments: [],
     objectives: [],
+    hazards: [],
     bullets: [],
     events: [],
     upgrades: [],
@@ -193,6 +194,7 @@ export function createGame(options = {}) {
     ultimateCharge: 0,
     ammo: buster.basic.ammoMax,
     ammoTimer: 0,
+    playerDebuff: 0,
     uid: 0,
   };
   spawnSector(s);
@@ -222,6 +224,8 @@ export function spawnSector(s) {
   s.waveTime = 0;
   s.head = 1220 + 80 * (s.run.sector - 1);
   s.bullets = [];
+  s.hazards = [];
+  s.playerDebuff = 0;
   s.abilityCooldown = 0;
   s.fireTimer = 0;
   s.combo = 0;
@@ -253,6 +257,7 @@ export function spawnSector(s) {
     huntDamage: 0,
     huntTarget: config.huntTarget || 0,
     huntTimer: config.huntTime || 0,
+    alphaAttackTimer: config.rule === 'alpha-phases' ? 3.2 : 0,
   };
   s.segments = Array.from({ length: count }, (_, i) => {
     const type = typeForIndex(config, i);
@@ -329,6 +334,7 @@ export function chooseRoute(s, id) {
 function finishSector(s) {
   if (s.phase !== 'playing') return;
   s.bullets = [];
+  s.hazards = [];
   const sector = s.run.sector;
   const bonus = Math.max(0, Math.round((90 - s.sectorTime) * 20));
   s.score += bonus;
@@ -565,10 +571,47 @@ function encounterRuleEffects(s, dt) {
       appendSegments(s, 2, .58, nextPhase === 2);
       s.events.push({ type: 'alpha-phase', phase: nextPhase });
     }
+
+    runtime.alphaAttackTimer -= dt;
+    if (runtime.alphaAttackTimer <= 0) {
+      const radius = 60 + runtime.alphaPhase * 8;
+      s.hazards.push({
+        id: s.uid++,
+        type: 'venom-strike',
+        x: s.player.x,
+        y: s.player.y,
+        radius,
+        telegraph: .85,
+        active: .5,
+        hit: false,
+      });
+      runtime.alphaAttackTimer += Math.max(2.5, 4.3 - runtime.alphaPhase * .65);
+      s.events.push({ type: 'venom-telegraph', x: s.player.x, y: s.player.y, radius });
+    }
     effects.speed = 1 + runtime.alphaPhase * .18;
   }
 
   return effects;
+}
+
+function updateHazards(s, dt) {
+  for (const hazard of s.hazards) {
+    if (hazard.telegraph > 0) {
+      hazard.telegraph = Math.max(0, hazard.telegraph - dt);
+      if (hazard.telegraph === 0) s.events.push({ type: 'venom-active', x: hazard.x, y: hazard.y, radius: hazard.radius });
+      continue;
+    }
+    hazard.active = Math.max(0, hazard.active - dt);
+    if (!hazard.hit && Math.hypot(s.player.x - hazard.x, s.player.y - hazard.y) <= hazard.radius) {
+      hazard.hit = true;
+      s.ammo = Math.max(0, s.ammo - 1);
+      if (s.ammo < s.buster.basic.ammoMax && s.ammoTimer <= 0) s.ammoTimer = s.buster.basic.ammoReload;
+      s.abilityCooldown = Math.min(s.buster.ability.cooldown, s.abilityCooldown + 1.5);
+      s.playerDebuff = Math.max(s.playerDebuff, 1.15);
+      s.events.push({ type: 'venom-hit', x: s.player.x, y: s.player.y });
+    }
+  }
+  s.hazards = s.hazards.filter(h => h.telegraph > 0 || h.active > 0);
 }
 
 export function segmentCircleHit(ax, ay, bx, by, cx, cy, radius) {
@@ -593,6 +636,8 @@ export function update(s, dt, input = {}) {
   s.fireTimer -= dt;
   const config = getEncounterConfig(s);
   const ruleEffects = encounterRuleEffects(s, dt);
+  s.playerDebuff = Math.max(0, s.playerDebuff - dt);
+  if (s.playerDebuff > 0) ruleEffects.move *= .62;
 
   if (s.ammo < s.buster.basic.ammoMax) {
     s.ammoTimer -= dt / ruleEffects.reload;
@@ -653,6 +698,7 @@ export function update(s, dt, input = {}) {
     }
   }
   placeSegments(s);
+  updateHazards(s, dt);
   for (const seg of s.segments) seg.flash = Math.max(0, seg.flash - dt);
   for (const obj of s.objectives) obj.flash = Math.max(0, obj.flash - dt);
 
