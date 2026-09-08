@@ -33,7 +33,7 @@ export const BUSTERS = {
     },
     ultimate: {
       id: 'storm-core', name: 'Tormenta de núcleo',
-      chargeMax: 120, damage: 42, targets: 8,
+      chargeMax: 140, damage: 34, radius: 145, bolts: 7,
     },
   },
 };
@@ -332,17 +332,23 @@ export function activateAbility(s) {
 export function activateUltimate(s) {
   const ultimate = s.buster.ultimate;
   if (s.phase !== 'playing' || s.ultimateCharge < ultimate.chargeMax || !s.segments.length) return false;
-  const targets = [...s.segments].filter(n => n.d >= 0).slice(0, ultimate.targets);
+  const center = { ...s.aim };
+  const targets = [...s.segments]
+    .filter(n => n.d >= 0 && Math.hypot(n.x - center.x, n.y - center.y) <= ultimate.radius)
+    .sort((a, b) => Math.hypot(a.x - center.x, a.y - center.y) - Math.hypot(b.x - center.x, b.y - center.y))
+    .slice(0, ultimate.bolts);
   if (!targets.length) return false;
 
   s.ultimateCharge = 0;
-  let from = { ...s.player };
-  for (const n of targets) {
-    s.events.push({ type: 'arc', x: from.x, y: from.y, tx: n.x, ty: n.y, big: true, ultimate: true });
-    from = { x: n.x, y: n.y };
+  s.events.push({ type: 'ultimate-zone', id: ultimate.id, x: center.x, y: center.y, radius: ultimate.radius });
+  for (let i = 0; i < targets.length; i++) {
+    const n = targets[i];
+    const skyX = n.x + ((i % 3) - 1) * 26;
+    s.events.push({ type: 'arc', x: skyX, y: -24, tx: n.x, ty: n.y, big: true, ultimate: true });
+    s.events.push({ type: 'ultimate-bolt', x: n.x, y: n.y, index: i });
     damage(s, n.id, ultimate.damage, 'ultimate');
   }
-  s.events.push({ type: 'ultimate', id: ultimate.id });
+  s.events.push({ type: 'ultimate', id: ultimate.id, x: center.x, y: center.y, hits: targets.length, radius: ultimate.radius });
   if (!s.segments.length) finishSector(s);
   return true;
 }
