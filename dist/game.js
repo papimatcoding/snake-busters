@@ -139,7 +139,7 @@ function events() {
     if (e.type === 'split') announce(language === 'es' ? `TUBERÍA BIFURCADA · +${e.count} SEGMENTOS` : `SPLIT PIPE · +${e.count} SEGMENTS`);
     if (e.type === 'sludge') announce(language === 'es' ? 'PULSO DE LODO TÓXICO' : 'TOXIC SLUDGE PULSE');
     if (e.type === 'alpha-phase') announce(language === 'es' ? `GREENFANG ALFA · FASE ${e.phase + 1}` : `GREENFANG ALPHA · PHASE ${e.phase + 1}`);
-    if (e.type === 'hunt-complete') announce(language === 'es' ? 'CAZA COMPLETADA · GREENFANG REPELELIDA' : 'HUNT COMPLETE · GREENFANG DRIVEN OFF');
+    if (e.type === 'hunt-complete') announce(language === 'es' ? 'CAZA COMPLETADA · GREENFANG REPELIDA' : 'HUNT COMPLETE · GREENFANG DRIVEN OFF');
     if (e.type === 'hunt-escaped') announce(language === 'es' ? 'GREENFANG HA ESCAPADO' : 'GREENFANG ESCAPED');
     if (e.type === 'objective-hit') { burst(e.x, e.y, '#b9e973', 3); labels.push({ x:e.x, y:e.y-24, text:`-${Math.max(1,Math.round(e.amount))}`, life:.42, color:'#dfffa4', small:true }); }
     if (e.type === 'objective-break') { burst(e.x, e.y, '#c5f76e', 24); rings.push({ x:e.x, y:e.y, life:.48, color:'#c5f76e' }); announce(language === 'es' ? 'NIDO DESTRUIDO' : 'NEST DESTROYED'); }
@@ -264,20 +264,28 @@ function drawSnake(t) {
   const visible = state.segments.filter(seg => seg.d >= 0);
   if (!visible.length) return;
 
-  // One continuous silhouette first: Greenfang should read as a creature, not loose tokens.
-  const tailToHead = [...visible].reverse();
-  ctx.save();
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.beginPath();
-  tailToHead.forEach((seg, i) => i ? ctx.lineTo(seg.x, seg.y) : ctx.moveTo(seg.x, seg.y));
-  ctx.strokeStyle = 'rgba(2,9,11,.78)'; ctx.lineWidth = 48; ctx.stroke();
-  ctx.strokeStyle = '#3d5f2e'; ctx.lineWidth = 38; ctx.stroke();
-  ctx.strokeStyle = 'rgba(147,190,79,.26)'; ctx.lineWidth = 5; ctx.stroke();
-  ctx.restore();
+  // Draw one continuous silhouette per lane/branch.
+  const lanes = state.encounterState?.splitLanes || 1;
+  const laneFirstIds = new Set();
+  for (let lane = 0; lane < lanes; lane++) {
+    const branch = state.segments.filter(seg => (seg.lane || 0) === lane && seg.d >= 0);
+    if (!branch.length) continue;
+    laneFirstIds.add(branch[0].id);
+    const tailToHead = [...branch].reverse();
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    tailToHead.forEach((seg, i) => i ? ctx.lineTo(seg.x, seg.y) : ctx.moveTo(seg.x, seg.y));
+    ctx.strokeStyle = 'rgba(2,9,11,.78)'; ctx.lineWidth = lanes > 1 ? 40 : 48; ctx.stroke();
+    ctx.strokeStyle = lane === 1 && lanes > 1 ? '#486934' : '#3d5f2e'; ctx.lineWidth = lanes > 1 ? 31 : 38; ctx.stroke();
+    ctx.strokeStyle = 'rgba(147,190,79,.26)'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.restore();
+  }
 
   for (let i = visible.length - 1; i >= 0; i--) {
     const s = visible[i];
     const originalIndex = state.segments.indexOf(s);
+    const isHead = laneFirstIds.has(s.id);
     const color = colors[s.type], hpRatio = Math.max(0, s.hp / s.maxHp);
     const hovered = Math.hypot(pointer.x - s.x, pointer.y - s.y) < 52;
     const damaged = hpRatio < .999;
@@ -287,7 +295,7 @@ function drawSnake(t) {
     ctx.translate(s.x, s.y + wobble);
     ctx.rotate(s.a);
 
-    if (originalIndex === 0) {
+    if (isHead) {
       // Head: elongated and directional, with a readable jaw/snout.
       ctx.shadowColor = 'rgba(0,0,0,.48)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 5;
       ctx.fillStyle = s.flash > 0 ? '#f3fff1' : '#557638';
@@ -338,9 +346,9 @@ function drawSnake(t) {
     }
     ctx.restore();
 
-    if (hovered || damaged || originalIndex === 0) {
-      const barW = originalIndex === 0 ? 54 : 40;
-      const barX = s.x - barW / 2, barY = s.y - (originalIndex === 0 ? 40 : 32);
+    if (hovered || damaged || isHead) {
+      const barW = isHead ? 54 : 40;
+      const barX = s.x - barW / 2, barY = s.y - (isHead ? 40 : 32);
       ctx.fillStyle = 'rgba(3,10,16,.88)'; ctx.fillRect(barX - 2, barY - 2, barW + 4, 6);
       ctx.fillStyle = hpRatio < .3 ? '#ff7d72' : color; ctx.fillRect(barX, barY, barW * hpRatio, 2);
       ctx.textAlign = 'center'; ctx.font = '800 8px ui-monospace, monospace'; ctx.fillStyle = '#d9e8ef';
