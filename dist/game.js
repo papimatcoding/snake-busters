@@ -20,7 +20,7 @@ function goScreen(id) {
   document.querySelectorAll('.app-screen').forEach(screen => { screen.hidden = screen.id !== id; });
   document.body.dataset.screen = id;
   resetInput();
-  window.scrollTo({ top: 0, behavior: 'instant' });
+  window.scrollTo(0, 0);
 }
 function syncLobbyProgress() {
   const bestEl = $('lobby-best-sector');
