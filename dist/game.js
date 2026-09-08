@@ -68,6 +68,7 @@ function applyLanguage() {
   document.documentElement.lang = language;
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-lang-toggle]').forEach(btn => { btn.textContent = language === 'es' ? 'EN' : 'ES'; });
+  if ($('sound')) $('sound').textContent = t(sound ? 'sound.on' : 'sound.off');
   syncHUD();
 }
 function toggleLanguage() {
@@ -445,7 +446,7 @@ function syncUI() {
   if (['won', 'lost'].includes(state.phase)) {
     const won = state.phase === 'won';
     const es = language === 'es';
-    panel(`<span class="run-tag">${es ? 'BROTE 01' : 'OUTBREAK 01'} · ${t('world.name')}</span><p class="eyebrow">${won ? (es ? 'GREENFANG CONTENIDA' : 'GREENFANG CONTAINED') : (es ? 'CONTENCIÓN FALLIDA' : 'CONTAINMENT FAILED')}</p><h2>${won ? (es ? 'Expedición completa.<br>Por ahora.' : 'Expedition complete.<br>For now.') : (es ? 'Greenfang rompió<br>la línea.' : 'Greenfang broke<br>the line.')}</h2><div class="results"><div><small>${es ? 'PUNTUACIÓN' : 'SCORE'}</small><strong>${format(state.score)}</strong></div><div><small>${es ? 'MEJOR CADENA' : 'BEST CHAIN'}</small><strong>×${Math.min(8, state.maxCombo)}</strong></div><div><small>${es ? 'SECTORES' : 'SECTORS'}</small><strong>${won ? 5 : Math.max(0, state.wave - 1)} / 5</strong></div></div><p class="intro">${state.kills} ${es ? 'segmentos destruidos' : 'segments destroyed'} · ${Math.floor(state.time / 60)}:${String(Math.floor(state.time % 60)).padStart(2, '0')} · ${Math.round(state.hits / Math.max(1, state.shots * state.buster.basic.projectiles) * 100)} %</p><div class="result-actions"><button id="again" class="primary">${es ? 'REINTENTAR' : 'RETRY'} <span>↗</span></button><button id="return-hq" class="secondary">${es ? 'VOLVER A LA BASE' : 'RETURN TO HQ'}</button></div>`);
+    panel(`<span class="run-tag">${es ? 'BROTE 01' : 'OUTBREAK 01'} · ${t('world.name')}</span><p class="eyebrow">${won ? (es ? 'GREENFANG CONTENIDA' : 'GREENFANG CONTAINED') : (es ? 'CONTENCIÓN FALLIDA' : 'CONTAINMENT FAILED')}</p><h2>${won ? (es ? 'Expedición completa.<br>Por ahora.' : 'Expedition complete.<br>For now.') : (es ? 'Greenfang rompió<br>la línea.' : 'Greenfang broke<br>the line.')}</h2><div class="results"><div><small>${es ? 'PUNTUACIÓN' : 'SCORE'}</small><strong>${format(state.score)}</strong></div><div><small>${es ? 'MEJOR CADENA' : 'BEST CHAIN'}</small><strong>×${Math.min(8, state.maxCombo)}</strong></div><div><small>${es ? 'SECTORES' : 'SECTORS'}</small><strong>${won ? 5 : Math.max(0, state.wave - 1)} / 5</strong></div></div>${state.run.salvage ? `<div class="run-loot"><span>◆</span><div><small>${es ? 'MUESTRAS DE MUTACIÓN' : 'MUTATION SAMPLES'}</small><strong>+${state.run.salvage}</strong></div></div>` : ''}<p class="intro">${state.kills} ${es ? 'segmentos destruidos' : 'segments destroyed'} · ${Math.floor(state.time / 60)}:${String(Math.floor(state.time % 60)).padStart(2, '0')} · ${Math.round(state.hits / Math.max(1, state.shots * state.buster.basic.projectiles) * 100)} %</p><div class="result-actions"><button id="again" class="primary">${es ? 'REINTENTAR' : 'RETRY'} <span>↗</span></button><button id="return-hq" class="secondary">${es ? 'VOLVER A LA BASE' : 'RETURN TO HQ'}</button></div>`);
     $('again').onclick = restart; $('return-hq').onclick = () => leaveRun('lobby-screen');
   }
 }
