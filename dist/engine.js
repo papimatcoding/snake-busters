@@ -67,11 +67,11 @@ export const OUTBREAKS = {
     name: 'Toxic Sewers',
     target: 'Greenfang',
     sectors: [
-      { id: 'drain-gate', name: 'Drain Gate', kind: 'containment', segments: 12, hp: 80, speed: 55, accel: .48, armorEvery: 5, volatileEvery: 6, mutationAfter: 'plated-scales' },
-      { id: 'filter-hall', name: 'Filter Hall', kind: 'pressure', segments: 14, hp: 92, speed: 61, accel: .52, armorEvery: 5, volatileEvery: 5, mutationAfter: 'unstable-glands' },
-      { id: 'split-pipe', name: 'Split Pipe', kind: 'armor-break', segments: 15, hp: 104, speed: 65, accel: .56, armorEvery: 4, volatileEvery: 6, mutationAfter: 'overgrowth' },
-      { id: 'the-sump', name: 'The Sump', kind: 'surge', segments: 17, hp: 115, speed: 70, accel: .62, armorEvery: 4, volatileEvery: 5, mutationAfter: 'frenzy' },
-      { id: 'greenfang-alpha', name: 'Greenfang Alpha', kind: 'alpha', segments: 18, hp: 128, speed: 74, accel: .66, armorEvery: 4, volatileEvery: 5, headHpMultiplier: 2.2 },
+      { id: 'drain-gate', name: 'Drain Gate', kind: 'containment', rule: 'baseline', segments: 12, hp: 80, speed: 55, accel: .48, armorEvery: 5, volatileEvery: 6, mutationAfter: 'plated-scales' },
+      { id: 'filter-hall', name: 'Filter Hall', kind: 'pressure', rule: 'filter-pressure', segments: 14, hp: 92, speed: 61, accel: .52, armorEvery: 5, volatileEvery: 5, mutationAfter: 'unstable-glands' },
+      { id: 'split-pipe', name: 'Split Pipe', kind: 'split', rule: 'split-regrowth', segments: 15, hp: 104, speed: 65, accel: .56, armorEvery: 4, volatileEvery: 6, mutationAfter: 'overgrowth' },
+      { id: 'the-sump', name: 'The Sump', kind: 'hazard', rule: 'toxic-sump', segments: 17, hp: 115, speed: 70, accel: .62, armorEvery: 4, volatileEvery: 5, mutationAfter: 'frenzy' },
+      { id: 'greenfang-alpha', name: 'Greenfang Alpha', kind: 'alpha', rule: 'alpha-phases', segments: 18, hp: 128, speed: 74, accel: .66, armorEvery: 4, volatileEvery: 5, headHpMultiplier: 2.2 },
     ],
   },
 };
@@ -177,6 +177,7 @@ export function spawnSector(s) {
     id: config.id,
     name: config.name,
     kind: config.kind,
+    rule: config.rule,
     target: getOutbreak(s.run.outbreakId).target,
   };
   s.wave = s.run.sector;
@@ -194,6 +195,14 @@ export function spawnSector(s) {
   s.player = { x: 600, y: 660 };
 
   const count = config.segments + config.segmentBonus;
+  s.encounterState = {
+    initialSegments: count,
+    pressureTimer: 8,
+    splitTriggered: false,
+    sludgeTimer: 7,
+    sludgeActive: 0,
+    alphaPhase: 0,
+  };
   s.segments = Array.from({ length: count }, (_, i) => {
     const type = typeForIndex(config, i);
     const typeHp = type === 'armor' ? 1.7 : type === 'volatile' ? .8 : 1;
@@ -353,6 +362,72 @@ export function activateUltimate(s) {
   return true;
 }
 
+function appendSegments(s, count, hpScale = .72, forceArmor = false) {
+  const config = getEncounterConfig(s);
+  for (let i = 0; i < count; i++) {
+    const type = forceArmor ? 'armor' : (i % 3 === 2 ? 'volatile' : 'normal');
+    const typeHp = type === 'armor' ? 1.7 : type === 'volatile' ? .8 : 1;
+    const maxHp = config.hp * config.hpMultiplier * typeHp * hpScale;
+    s.segments.push({ id: s.uid++, type, hp: maxHp, maxHp, d: 0, flash: 0 });
+  }
+  placeSegments(s);
+}
+
+function encounterRuleEffects(s, dt) {
+  const rule = s.encounter?.rule;
+  const runtime = s.encounterState;
+  const effects = { move: 1, reload: 1, speed: 1 };
+  if (!runtime) return effects;
+
+  if (rule === 'filter-pressure') {
+    runtime.pressureTimer -= dt;
+    if (runtime.pressureTimer <= 0) {
+      runtime.pressureTimer += 8;
+      const reinforced = s.segments.filter(n => n.type === 'normal' && n.d >= 0).slice(0, 2);
+      for (const seg of reinforced) {
+        seg.type = 'armor';
+        seg.maxHp *= 1.28;
+        seg.hp *= 1.28;
+      }
+      if (reinforced.length) s.events.push({ type: 'reinforce', count: reinforced.length });
+    }
+  }
+
+  if (rule === 'split-regrowth' && !runtime.splitTriggered && s.segments.length <= Math.ceil(runtime.initialSegments * .6)) {
+    runtime.splitTriggered = true;
+    appendSegments(s, 4, .62);
+    s.events.push({ type: 'split', count: 4 });
+  }
+
+  if (rule === 'toxic-sump') {
+    runtime.sludgeTimer -= dt;
+    if (runtime.sludgeActive > 0) {
+      runtime.sludgeActive = Math.max(0, runtime.sludgeActive - dt);
+      effects.move = .72;
+      effects.reload = 1.7;
+    } else if (runtime.sludgeTimer <= 0) {
+      runtime.sludgeTimer += 10;
+      runtime.sludgeActive = 3;
+      effects.move = .72;
+      effects.reload = 1.7;
+      s.events.push({ type: 'sludge', duration: 3 });
+    }
+  }
+
+  if (rule === 'alpha-phases') {
+    const ratio = s.segments.length / Math.max(1, runtime.initialSegments);
+    const nextPhase = ratio <= .33 ? 2 : ratio <= .66 ? 1 : 0;
+    if (nextPhase > runtime.alphaPhase) {
+      runtime.alphaPhase = nextPhase;
+      appendSegments(s, 2, .58, nextPhase === 2);
+      s.events.push({ type: 'alpha-phase', phase: nextPhase });
+    }
+    effects.speed = 1 + runtime.alphaPhase * .18;
+  }
+
+  return effects;
+}
+
 export function segmentCircleHit(ax, ay, bx, by, cx, cy, radius) {
   const dx = bx - ax, dy = by - ay, length2 = dx * dx + dy * dy;
   if (!length2) return Math.hypot(ax - cx, ay - cy) <= radius ? 0 : null;
@@ -373,9 +448,11 @@ export function update(s, dt, input = {}) {
   s.waveTime = s.sectorTime;
   s.abilityCooldown = Math.max(0, s.abilityCooldown - dt);
   s.fireTimer -= dt;
+  const config = getEncounterConfig(s);
+  const ruleEffects = encounterRuleEffects(s, dt);
 
   if (s.ammo < s.buster.basic.ammoMax) {
-    s.ammoTimer -= dt;
+    s.ammoTimer -= dt / ruleEffects.reload;
     while (s.ammoTimer <= 0 && s.ammo < s.buster.basic.ammoMax) {
       s.ammo++;
       s.events.push({ type: 'reload', ammo: s.ammo });
@@ -388,8 +465,8 @@ export function update(s, dt, input = {}) {
   if (!s.comboTimer) s.combo = 0;
 
   const mx = input.x || 0, my = input.y || 0, len = Math.max(1, Math.hypot(mx, my));
-  s.player.x = clamp(s.player.x + mx / len * 330 * dt, 45, 1155);
-  s.player.y = clamp(s.player.y + my / len * 330 * dt, 605, 705);
+  s.player.x = clamp(s.player.x + mx / len * 330 * ruleEffects.move * dt, 45, 1155);
+  s.player.y = clamp(s.player.y + my / len * 330 * ruleEffects.move * dt, 605, 705);
   if (input.aim) s.aim = { ...input.aim };
 
   if (input.fire && s.fireTimer <= 0 && s.ammo > 0) {
@@ -415,8 +492,7 @@ export function update(s, dt, input = {}) {
     s.events.push({ type: 'shot', ammo: s.ammo, projectiles: count });
   }
 
-  const config = getEncounterConfig(s);
-  s.head += (config.speed * config.speedMultiplier + s.sectorTime * config.accel) * dt;
+  s.head += (config.speed * config.speedMultiplier + s.sectorTime * config.accel) * ruleEffects.speed * dt;
   placeSegments(s);
   for (const seg of s.segments) seg.flash = Math.max(0, seg.flash - dt);
 
