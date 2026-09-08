@@ -1,4 +1,4 @@
-import { createGame, startGame, update, activateAbility, activateUltimate, chooseUpgrade, chooseRoute, getEncounter, MUTATIONS, ROUTES, pathAt, PATH_LENGTH, UPGRADES, WIDTH, HEIGHT, STEP, clamp } from './engine.js';
+import { createGame, startGame, update, activateAbility, activateUltimate, chooseUpgrade, chooseRoute, getEncounter, MUTATIONS, ROUTES, pathAt, pathAtLane, PATH_LENGTH, UPGRADES, WIDTH, HEIGHT, STEP, clamp } from './engine.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game'), ctx = canvas.getContext('2d');
@@ -139,6 +139,8 @@ function events() {
     if (e.type === 'split') announce(language === 'es' ? `TUBERÍA BIFURCADA · +${e.count} SEGMENTOS` : `SPLIT PIPE · +${e.count} SEGMENTS`);
     if (e.type === 'sludge') announce(language === 'es' ? 'PULSO DE LODO TÓXICO' : 'TOXIC SLUDGE PULSE');
     if (e.type === 'alpha-phase') announce(language === 'es' ? `GREENFANG ALFA · FASE ${e.phase + 1}` : `GREENFANG ALPHA · PHASE ${e.phase + 1}`);
+    if (e.type === 'hunt-complete') announce(language === 'es' ? 'CAZA COMPLETADA · GREENFANG REPELELIDA' : 'HUNT COMPLETE · GREENFANG DRIVEN OFF');
+    if (e.type === 'hunt-escaped') announce(language === 'es' ? 'GREENFANG HA ESCAPADO' : 'GREENFANG ESCAPED');
     if (e.type === 'objective-hit') { burst(e.x, e.y, '#b9e973', 3); labels.push({ x:e.x, y:e.y-24, text:`-${Math.max(1,Math.round(e.amount))}`, life:.42, color:'#dfffa4', small:true }); }
     if (e.type === 'objective-break') { burst(e.x, e.y, '#c5f76e', 24); rings.push({ x:e.x, y:e.y, life:.48, color:'#c5f76e' }); announce(language === 'es' ? 'NIDO DESTRUIDO' : 'NEST DESTROYED'); }
     if (e.type === 'route-reward') announce(language === 'es' ? `+ ${e.salvage} MUESTRA DE MUTACIÓN` : `+ ${e.salvage} MUTATION SAMPLE`);
@@ -172,6 +174,15 @@ function track() {
   for (let d = 0; d < PATH_LENGTH; d += 8) { const p = pathAt(d); d ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); }
   const end = pathAt(PATH_LENGTH); ctx.lineTo(end.x, end.y);
 }
+function trackLane(lane, totalLanes) {
+  ctx.beginPath();
+  for (let d = 0; d < PATH_LENGTH; d += 8) {
+    const p = pathAtLane(d, lane, totalLanes);
+    d ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
+  }
+  const end = pathAtLane(PATH_LENGTH, lane, totalLanes);
+  ctx.lineTo(end.x, end.y);
+}
 function drawBackground(t) {
   const pulse = reduceMotion ? 0 : Math.sin(t * 1.8) * .5 + .5;
   const bg = ctx.createLinearGradient(0, 0, 0, HEIGHT);
@@ -192,10 +203,19 @@ function drawBackground(t) {
   ctx.textAlign = 'right'; ctx.fillStyle = '#5e8499'; ctx.fillText(`SECTOR ${String(state.run.sector).padStart(2, '0')}`, 1160, 40);
 
   ctx.lineCap = 'round';
-  track(); ctx.strokeStyle = '#06101a'; ctx.lineWidth = 68; ctx.stroke();
-  track(); ctx.strokeStyle = '#425868'; ctx.lineWidth = 56; ctx.stroke();
-  track(); ctx.strokeStyle = '#152a38'; ctx.lineWidth = 49; ctx.stroke();
-  track(); ctx.strokeStyle = '#2f4b5c'; ctx.lineWidth = 2; ctx.setLineDash([2, 11]); ctx.stroke(); ctx.setLineDash([]);
+  const lanes = state.encounterState?.splitLanes || 1;
+  if (lanes > 1) {
+    for (let lane = 0; lane < lanes; lane++) {
+      trackLane(lane, lanes); ctx.strokeStyle = '#06101a'; ctx.lineWidth = 42; ctx.stroke();
+      trackLane(lane, lanes); ctx.strokeStyle = lane === 0 ? '#183041' : '#263842'; ctx.lineWidth = 34; ctx.stroke();
+      trackLane(lane, lanes); ctx.strokeStyle = '#426271'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 10]); ctx.stroke(); ctx.setLineDash([]);
+    }
+  } else {
+    track(); ctx.strokeStyle = '#06101a'; ctx.lineWidth = 68; ctx.stroke();
+    track(); ctx.strokeStyle = '#425868'; ctx.lineWidth = 56; ctx.stroke();
+    track(); ctx.strokeStyle = '#152a38'; ctx.lineWidth = 49; ctx.stroke();
+    track(); ctx.strokeStyle = '#2f4b5c'; ctx.lineWidth = 2; ctx.setLineDash([2, 11]); ctx.stroke(); ctx.setLineDash([]);
+  }
 
   for (let d = 85; d < PATH_LENGTH - 70; d += 175) {
     const p = pathAt(d); ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a);
@@ -453,9 +473,27 @@ function syncUI() {
 function syncHUD() {
   $('wave').innerHTML = `${String(state.run.sector).padStart(2, '0')} <small>/ 05</small>`;
   $('encounter-name').textContent = encounterName().toUpperCase();
-  $('mutation-count').textContent = state.run.mutations.length
-    ? (language === 'es' ? `${state.run.mutations.length} MUTACIÓN${state.run.mutations.length === 1 ? '' : 'ES'}` : `${state.run.mutations.length} MUTATION${state.run.mutations.length === 1 ? '' : 'S'}`)
-    : t('status.noMut');
+  const objectiveLabel = $('objective-label'), objectiveValue = $('objective-value');
+  if (state.encounter?.rule === 'hunt-escape') {
+    objectiveLabel.textContent = language === 'es' ? 'CAZA' : 'HUNT';
+    objectiveValue.textContent = `${Math.round(state.encounterState.huntDamage)} / ${Math.round(state.encounterState.huntTarget)} · ${Math.ceil(state.encounterState.huntTimer)}s`;
+  } else if ((state.encounterState?.splitLanes || 1) > 1) {
+    objectiveLabel.textContent = language === 'es' ? 'DIVISIÓN' : 'SPLIT';
+    const lanes = state.encounterState.splitLanes;
+    const alive = new Set(state.segments.filter(s => s.d >= 0).map(s => s.lane || 0)).size;
+    objectiveValue.textContent = language === 'es' ? `${alive} / ${lanes} RAMAS` : `${alive} / ${lanes} BRANCHES`;
+  } else if ((state.objectives?.length || 0) > 0) {
+    objectiveLabel.textContent = language === 'es' ? 'NIDOS' : 'NESTS';
+    objectiveValue.textContent = String(state.objectives.length);
+  } else if (state.encounter?.rule === 'alpha-phases') {
+    objectiveLabel.textContent = 'GREENFANG';
+    objectiveValue.textContent = language === 'es' ? `FASE ${(state.encounterState.alphaPhase || 0) + 1}` : `PHASE ${(state.encounterState.alphaPhase || 0) + 1}`;
+  } else {
+    objectiveLabel.textContent = 'GREENFANG';
+    objectiveValue.textContent = state.run.mutations.length
+      ? (language === 'es' ? `${state.run.mutations.length} MUTACIÓN${state.run.mutations.length === 1 ? '' : 'ES'}` : `${state.run.mutations.length} MUTATION${state.run.mutations.length === 1 ? '' : 'S'}`)
+      : t('status.noMut');
+  }
   const remaining = clamp(100 * (1 - state.head / PATH_LENGTH), 0, 100);
   $('distance').textContent = language === 'es' ? `${Math.ceil(remaining)} % DE MARGEN` : `${Math.ceil(remaining)} % MARGIN`;
   $('danger').value = remaining;
