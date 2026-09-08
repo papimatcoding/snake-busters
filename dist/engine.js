@@ -129,7 +129,7 @@ export function createGame(options = {}) {
     sectorTime: 0,
     waveTime: 0,
     head: 800,
-    player: { x: 600, y: 660 },
+    player: { x: 600, y: 625 },
     aim: { x: 600, y: 330 },
     buster,
     run: {
@@ -192,7 +192,7 @@ export function spawnSector(s) {
   s.comboTimer = 0;
   s.ammo = s.buster.basic.ammoMax;
   s.ammoTimer = 0;
-  s.player = { x: 600, y: 660 };
+  s.player = { x: 600, y: 625 };
 
   const count = config.segments + config.segmentBonus;
   s.encounterState = {
@@ -466,7 +466,7 @@ export function update(s, dt, input = {}) {
 
   const mx = input.x || 0, my = input.y || 0, len = Math.max(1, Math.hypot(mx, my));
   s.player.x = clamp(s.player.x + mx / len * 330 * ruleEffects.move * dt, 45, 1155);
-  s.player.y = clamp(s.player.y + my / len * 330 * ruleEffects.move * dt, 605, 705);
+  s.player.y = clamp(s.player.y + my / len * 330 * ruleEffects.move * dt, 570, 650);
   if (input.aim) s.aim = { ...input.aim };
 
   if (input.fire && s.fireTimer <= 0 && s.ammo > 0) {
