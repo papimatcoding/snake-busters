@@ -29,7 +29,7 @@ export function createGame() {
     segments: [], bullets: [], events: [], upgrades: [], choices: [], kills: 0, shots: 0, hits: 0,
     combo: 0, maxCombo: 0, comboTimer: 0, fireTimer: 0, cooldown: 0, uid: 0,
     ammo: 3, ammoTimer: 0,
-    stats: { damage: 14, interval: .16, ammoMax: 3, ammoReload: .82, chain: 1, blast: 0, push: 25, cooldown: 9, targets: 5, pulseDamage: 48 } };
+    stats: { damage: 24, interval: .16, ammoMax: 3, ammoReload: .52, chain: 1, blast: 0, push: 42, cooldown: 9, targets: 5, pulseDamage: 48 } };
   spawnWave(s); s.phase = 'ready'; return s;
 }
 export function spawnWave(s) {
