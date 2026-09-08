@@ -27,7 +27,7 @@ const I18N = {
     'mut.venomous':'VENENOSA','mut.splitter':'DIVISORA','mut.unstable':'INESTABLE',
     'enc.drain':'COMPUERTA DE DRENAJE','enc.filter':'SALA DE FILTROS','enc.split':'TUBERÍA BIFURCADA','enc.sump':'EL SUMIDERO','enc.alpha':'GREENFANG ALFA','enc.alphaTag':'ALFA',
     'deploy.title':'DESPLIEGUE','deploy.run':'EXPEDICIÓN','deploy.runText':'5 sectores · mejoras entre encuentros · la combinación se reinicia al abandonar.','deploy.sector':'SECTOR 01','deploy.objective':'OBJETIVO','deploy.objectiveText':'Evita que Greenfang alcance el núcleo de contención.','deploy.go':'DESPLEGAR','deploy.note':'Los 5 sectores comparten circuito por ahora, pero ya tienen configuración, combinación y mutaciones persistentes propias.',
-    'combat.basic':'TRIDENTE TESLA','combat.ability':'HABILIDAD','combat.overload':'SOBRECARGA','combat.ultimate':'DEFINITIVA','combat.storm':'TORMENTA',
+    'combat.basic':'TRIDENTE TESLA','combat.ability':'HABILIDAD','combat.overload':'SOBRECARGA','combat.ultimate':'DEFINITIVA','combat.storm':'TORMENTA','arena.entry':'ENTRADA','arena.core':'NÚCLEO',
     'status.ready':'LISTA','status.safe':'SEGURO','status.warn':'ALERTA','status.danger':'PELIGRO','status.noMut':'SIN MUTACIONES',
     'sound.off':'Sonido: no','sound.on':'Sonido: sí','pause':'Pausa','continue':'Continuar',
     'toast.busters':'Volt es el Buster de referencia. El diseño final de personajes llegará después de cerrar los sistemas.','toast.locker':'Personalización preparada para aspectos, efectos, banners y gestos.','toast.shop':'La tienda todavía no tiene economía ni compras.','toast.social':'El escuadrón de 3 está preparado visualmente. El multijugador real vendrá después.'
@@ -42,7 +42,7 @@ const I18N = {
     'mut.venomous':'VENOMOUS','mut.splitter':'SPLITTER','mut.unstable':'UNSTABLE',
     'enc.drain':'DRAIN GATE','enc.filter':'FILTER HALL','enc.split':'SPLIT PIPE','enc.sump':'THE SUMP','enc.alpha':'GREENFANG ALPHA','enc.alphaTag':'ALPHA',
     'deploy.title':'DEPLOYMENT','deploy.run':'EXPEDITION','deploy.runText':'5 sectors · upgrades between encounters · the build resets when you leave.','deploy.sector':'SECTOR 01','deploy.objective':'OBJECTIVE','deploy.objectiveText':'Stop Greenfang from reaching the containment core.','deploy.go':'DEPLOY','deploy.note':'The 5 sectors share a track for now, but already have persistent encounter configs, builds and mutations.',
-    'combat.basic':'TESLA TRIDENT','combat.ability':'ABILITY','combat.overload':'OVERLOAD','combat.ultimate':'ULTIMATE','combat.storm':'STORM',
+    'combat.basic':'TESLA TRIDENT','combat.ability':'ABILITY','combat.overload':'OVERLOAD','combat.ultimate':'ULTIMATE','combat.storm':'STORM','arena.entry':'ENTRY','arena.core':'CORE',
     'status.ready':'READY','status.safe':'SAFE','status.warn':'WARNING','status.danger':'DANGER','status.noMut':'NO MUTATIONS',
     'sound.off':'Sound: off','sound.on':'Sound: on','pause':'Pause','continue':'Continue',
     'toast.busters':'Volt is the reference Buster. Final character design comes after the systems are locked.','toast.locker':'Customization is reserved for skins, effects, banners and emotes.','toast.shop':'The shop has no economy or purchases yet.','toast.social':'The 3-player squad shell is ready. Real multiplayer comes later.'
@@ -198,7 +198,7 @@ function drawBackground(t) {
     ctx.strokeStyle = '#547284'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-7, -6); ctx.lineTo(1, 0); ctx.lineTo(-7, 6); ctx.stroke(); ctx.restore();
   }
 
-  ctx.textAlign = 'center'; ctx.fillStyle = '#7797a8'; ctx.font = '800 10px ui-monospace, monospace'; ctx.fillText('ENTRADA', 130, 86);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#7797a8'; ctx.font = '800 10px ui-monospace, monospace'; ctx.fillText(t('arena.entry'), 130, 86);
   const remaining = clamp(100 * (1 - state.head / PATH_LENGTH), 0, 100);
   const danger = remaining < 22;
   const p = pathAt(PATH_LENGTH);
@@ -208,52 +208,96 @@ function drawBackground(t) {
   ctx.rotate(reduceMotion ? 0 : t * .4); polygon(0, 0, 25, 6); ctx.fillStyle = danger ? '#3f2629' : '#193746'; ctx.fill(); ctx.stroke();
   ctx.rotate(reduceMotion ? 0 : -t * .8); polygon(0, 0, 14, 4, Math.PI / 4); ctx.fillStyle = danger ? '#ff8b75' : '#b9f5ff'; ctx.fill();
   ctx.restore();
-  ctx.fillStyle = danger ? '#ff8c7f' : '#a2eaf4'; ctx.font = '900 11px ui-monospace, monospace'; ctx.fillText('NÚCLEO', p.x, p.y - 54);
+  ctx.fillStyle = danger ? '#ff8c7f' : '#a2eaf4'; ctx.font = '900 11px ui-monospace, monospace'; ctx.fillText(t('arena.core'), p.x, p.y - 54);
 
   if (danger && state.phase === 'playing') {
     ctx.strokeStyle = `rgba(255,105,89,${.20 + pulse * .22})`; ctx.lineWidth = 7; ctx.strokeRect(4, 4, WIDTH - 8, HEIGHT - 8);
   }
 }
 function drawSnake(t) {
-  for (let i = state.segments.length - 1; i >= 0; i--) {
-    const s = state.segments[i]; if (s.d < 0) continue;
+  const visible = state.segments.filter(seg => seg.d >= 0);
+  if (!visible.length) return;
+
+  // One continuous silhouette first: Greenfang should read as a creature, not loose tokens.
+  const tailToHead = [...visible].reverse();
+  ctx.save();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  tailToHead.forEach((seg, i) => i ? ctx.lineTo(seg.x, seg.y) : ctx.moveTo(seg.x, seg.y));
+  ctx.strokeStyle = 'rgba(2,9,11,.78)'; ctx.lineWidth = 48; ctx.stroke();
+  ctx.strokeStyle = '#3d5f2e'; ctx.lineWidth = 38; ctx.stroke();
+  ctx.strokeStyle = 'rgba(147,190,79,.26)'; ctx.lineWidth = 5; ctx.stroke();
+  ctx.restore();
+
+  for (let i = visible.length - 1; i >= 0; i--) {
+    const s = visible[i];
+    const originalIndex = state.segments.indexOf(s);
     const color = colors[s.type], hpRatio = Math.max(0, s.hp / s.maxHp);
-    const hovered = Math.hypot(pointer.x - s.x, pointer.y - s.y) < 58;
-    const wobble = reduceMotion ? 0 : Math.sin(t * 4 + s.id * .8) * 1.2;
+    const hovered = Math.hypot(pointer.x - s.x, pointer.y - s.y) < 52;
+    const damaged = hpRatio < .999;
+    const wobble = reduceMotion ? 0 : Math.sin(t * 4.4 + s.id * .72) * .9;
 
-    ctx.save(); ctx.translate(s.x, s.y + wobble); ctx.rotate(s.a);
-    ctx.shadowColor = 'rgba(0,0,0,.65)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 6;
-    polygon(0, 0, 25, s.type === 'armor' ? 8 : 6); ctx.fillStyle = '#06121a'; ctx.fill();
-    ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.save();
+    ctx.translate(s.x, s.y + wobble);
+    ctx.rotate(s.a);
 
-    polygon(0, 0, 22, s.type === 'armor' ? 8 : 6);
-    ctx.fillStyle = s.flash > 0 ? '#f4ffff' : s.type === 'normal' ? '#547f35' : s.type === 'armor' ? '#435b99' : '#9a4a38';
-    ctx.fill(); ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.stroke();
+    if (originalIndex === 0) {
+      // Head: elongated and directional, with a readable jaw/snout.
+      ctx.shadowColor = 'rgba(0,0,0,.48)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 5;
+      ctx.fillStyle = s.flash > 0 ? '#f3fff1' : '#557638';
+      ctx.beginPath(); ctx.ellipse(4, 0, 34, 25, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      ctx.strokeStyle = '#8bb84f'; ctx.lineWidth = 3; ctx.stroke();
 
-    if (s.type === 'armor') {
-      ctx.strokeStyle = '#b9c9ff'; ctx.lineWidth = 2;
-      line(-7, -7, 4, -7); line(-9, 0, 7, 0); line(-7, 7, 4, 7);
-      ctx.fillStyle = '#d8e1ff'; circle(-12, 0, 2.2); ctx.fill();
-    } else if (s.type === 'volatile') {
-      ctx.fillStyle = '#ffc18f'; polygon(-1, 0, 10 + Math.sin(t * 8 + s.id) * 1.5, 3); ctx.fill();
-      ctx.strokeStyle = '#ffe0af'; ctx.lineWidth = 2; line(-10, -7, 8, 7); line(-10, 7, 8, -7);
+      ctx.fillStyle = '#719545';
+      ctx.beginPath(); ctx.ellipse(20, 0, 22, 17, 0, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = '#f3ffd5';
+      ctx.beginPath(); ctx.ellipse(17, -9, 5.5, 4.5, -.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(17, 9, 5.5, 4.5, .2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#172018';
+      circle(19.5, -9, 2.2); ctx.fill(); circle(19.5, 9, 2.2); ctx.fill();
+
+      ctx.strokeStyle = '#1b2719'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(24, -2); ctx.quadraticCurveTo(33, 0, 24, 3); ctx.stroke();
+      ctx.strokeStyle = '#d7ef8e'; ctx.lineWidth = 1.5;
+      line(34, 0, 43, -4); line(34, 0, 43, 4);
     } else {
-      ctx.fillStyle = '#d4ff8f'; circle(-3, 0, 5); ctx.fill();
-      ctx.fillStyle = '#31551f'; circle(-3, 0, 2); ctx.fill();
-    }
+      // Overlapping scales sit on top of the continuous body.
+      const scalePulse = s.type === 'volatile' && !reduceMotion ? Math.sin(t * 7 + s.id) * 1.4 : 0;
+      ctx.fillStyle = s.flash > 0 ? '#f4ffff' : s.type === 'armor' ? '#48639a' : s.type === 'volatile' ? '#a35440' : '#557637';
+      ctx.strokeStyle = s.type === 'armor' ? '#9fb7ff' : s.type === 'volatile' ? '#ff9a78' : '#79a846';
+      ctx.lineWidth = s.type === 'armor' ? 2.5 : 1.6;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s.type === 'volatile' ? 23 + scalePulse : 22, s.type === 'volatile' ? 20 + scalePulse : 18, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
 
-    if (i === 0) {
-      ctx.fillStyle = '#f7fff1'; circle(10, -8, 4.3); ctx.fill(); circle(10, 8, 4.3); ctx.fill();
-      ctx.fillStyle = '#17211a'; circle(12, -8, 1.8); ctx.fill(); circle(12, 8, 1.8); ctx.fill();
-      ctx.strokeStyle = '#efffda'; ctx.lineWidth = 2; line(18, -4, 25, 0); line(25, 0, 18, 4);
+      if (s.type === 'armor') {
+        ctx.fillStyle = '#6179b4';
+        ctx.strokeStyle = '#b7c8ff'; ctx.lineWidth = 1.5;
+        for (const x of [-10, 2]) {
+          ctx.beginPath();
+          ctx.moveTo(x - 5, -11); ctx.lineTo(x + 7, -8); ctx.lineTo(x + 7, 8); ctx.lineTo(x - 5, 11); ctx.closePath();
+          ctx.fill(); ctx.stroke();
+        }
+      } else if (s.type === 'volatile') {
+        ctx.fillStyle = '#ffc08c';
+        circle(2, 0, 7 + scalePulse * .45); ctx.fill();
+        ctx.strokeStyle = '#ffe0aa'; ctx.lineWidth = 1.5;
+        line(-10, -8, -3, -2); line(-10, 8, -3, 2);
+      } else {
+        ctx.strokeStyle = 'rgba(212,255,143,.35)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(-3, 0, 10, -.8, .8); ctx.stroke();
+      }
     }
     ctx.restore();
 
-    const barW = 42, barX = s.x - barW / 2, barY = s.y - 35;
-    ctx.fillStyle = 'rgba(3,10,16,.86)'; ctx.fillRect(barX - 2, barY - 2, barW + 4, 7);
-    ctx.fillStyle = hpRatio < .3 ? '#ff7d72' : color; ctx.fillRect(barX, barY, barW * hpRatio, 3);
-    if (hovered || hpRatio < .999 || i === 0) {
-      ctx.textAlign = 'center'; ctx.font = '800 9px ui-monospace, monospace'; ctx.fillStyle = '#d9e8ef';
+    if (hovered || damaged || originalIndex === 0) {
+      const barW = originalIndex === 0 ? 54 : 40;
+      const barX = s.x - barW / 2, barY = s.y - (originalIndex === 0 ? 40 : 32);
+      ctx.fillStyle = 'rgba(3,10,16,.88)'; ctx.fillRect(barX - 2, barY - 2, barW + 4, 6);
+      ctx.fillStyle = hpRatio < .3 ? '#ff7d72' : color; ctx.fillRect(barX, barY, barW * hpRatio, 2);
+      ctx.textAlign = 'center'; ctx.font = '800 8px ui-monospace, monospace'; ctx.fillStyle = '#d9e8ef';
       ctx.fillText(`${Math.ceil(s.hp)} / ${Math.ceil(s.maxHp)}`, s.x, barY - 5);
     }
   }
