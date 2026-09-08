@@ -25,7 +25,7 @@ export const BUSTERS = {
     basic: {
       id: 'tesla-trident', name: 'Tridente Tesla',
       damage: 11, interval: .2, ammoMax: 3, ammoReload: .66, chain: 1, push: 38,
-      projectiles: 3, spread: .105, chainScale: .24, ultimateGain: .3,
+      projectiles: 3, spread: .105, chainScale: .24, ultimateGain: .08,
     },
     ability: {
       id: 'overload', name: 'Sobrecarga',
@@ -363,7 +363,7 @@ export function damage(s, id, amount, source = 'shot') {
   s.comboTimer = 1.65;
   s.maxCombo = Math.max(s.maxCombo, s.combo);
   s.score += 100 * Math.min(s.combo, 8);
-  if (isBasicSource(source)) gainUltimate(s, 2);
+  if (isBasicSource(source)) gainUltimate(s, .75);
   s.head = Math.max(s.segments.length * 39 + 30, s.head - Math.min(85, s.buster.basic.push));
   s.events.push({ type: 'break', x: seg.x, y: seg.y, kind: seg.type, combo: s.combo });
 
