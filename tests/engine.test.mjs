@@ -225,6 +225,23 @@ test('sector 2 branches into a safe or infested route with persistent consequenc
   assert.ok(risky.events.some(e => e.type === 'route-reward'));
 });
 
+test('Greenfang Alpha telegraphs venom and punishes a stationary Buster', () => {
+  const s = createGame();
+  s.run.sector = 5;
+  spawnSector(s);
+  startGame(s);
+  let hit = false;
+  for (let i = 0; i < 120 * 8 && s.phase === 'playing'; i++) {
+    update(s, STEP);
+    if (s.events.some(e => e.type === 'venom-hit')) { hit = true; break; }
+  }
+  assert.ok(s.events.some(e => e.type === 'venom-telegraph'));
+  assert.equal(hit, true);
+  assert.ok(s.playerDebuff > 0);
+  assert.ok(s.ammo < s.buster.basic.ammoMax);
+  assert.ok(s.abilityCooldown > 0);
+});
+
 test('Split branches isolate neighbor effects and Hunt can fail by escape', () => {
   const split = createGame();
   split.run.sector = 3;
