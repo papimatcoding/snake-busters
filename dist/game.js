@@ -562,7 +562,13 @@ function frame(now) {
     while (accumulator >= STEP) { update(state, STEP, input); accumulator -= STEP; if (state.phase !== 'playing') { accumulator = 0; break; } }
   } else accumulator = 0;
   events(); syncUI(); render(now / 1000, state.phase === 'paused' ? 0 : dt);
-  if (smokeMode) document.body.dataset.smoke = state.phase;
+  if (smokeMode) {
+    const rect = canvas.getBoundingClientRect();
+    const visible = rect.width >= 300 && rect.height >= 250 && getComputedStyle(canvas).visibility !== 'hidden' && getComputedStyle(canvas).display !== 'none';
+    document.body.dataset.smoke = state.phase === 'playing' && visible && state.segments.length > 0 ? 'playing' : 'layout-error';
+    document.body.dataset.smokeCanvas = `${Math.round(rect.width)}x${Math.round(rect.height)}`;
+    document.body.dataset.smokeSegments = String(state.segments.length);
+  }
   if (announcementTime > 0) { announcementTime -= dt; if (announcementTime <= 0) $('announce').classList.remove('show'); }
   if (lobbyToastTime > 0) { lobbyToastTime -= dt; if (lobbyToastTime <= 0) $('lobby-toast')?.classList.remove('show'); }
   requestAnimationFrame(frame);
