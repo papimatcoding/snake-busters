@@ -3,51 +3,181 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#0a111b">
-  <meta name="description" content="Elige tus mejoras, encadena roturas y evita que la serpiente alcance el núcleo. Prototipo jugable de Snake Busters.">
-  <title>Snake Busters — Volt</title>
+  <meta name="theme-color" content="#08121d">
+  <meta name="description" content="Snake Busters: forma un equipo, entra en un outbreak y destroza serpientes mutantes sector a sector.">
+  <title>Snake Busters</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <main class="shell">
-    <header class="topbar">
-      <a class="wordmark" href="./" aria-label="Snake Busters, inicio">SNAKE<span>BUSTERS</span><small>PROTOTIPO 0.2</small></a>
-      <div class="top-actions"><span class="mode">SUPERVIVENCIA · SOLO</span><button id="sound" class="quiet" aria-pressed="false">Sonido: no</button><button id="pause" class="quiet" disabled>Pausa <kbd>P</kbd></button></div>
-    </header>
-    <section class="hud" aria-label="Estado de la partida">
-      <div><span class="label">OLEADA</span><strong id="wave">01 <small>/ 05</small></strong></div>
-      <div><span class="label">PUNTUACIÓN</span><strong id="score">000000</strong></div>
-      <div class="integrity"><div class="integrity-label"><span class="label">NÚCLEO</span><span id="core-status">SEGURO</span></div><progress id="danger" value="75" max="100" aria-label="Margen restante antes de que la serpiente alcance el núcleo"></progress><small id="distance">—</small></div>
-      <div class="record"><span class="label">RÉCORD LOCAL</span><strong id="best">000000</strong></div>
+  <div id="app" class="app">
+    <section id="title-screen" class="app-screen title-screen" aria-label="Pantalla de inicio">
+      <div class="title-noise"></div>
+      <div class="title-creature" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="title-buster" aria-hidden="true">
+        <div class="title-buster-head"><i></i><i></i></div>
+        <div class="title-buster-body"></div>
+        <div class="title-buster-gun"></div>
+        <b>↯</b>
+      </div>
+      <div class="title-copy">
+        <p class="kicker">CONTAINMENT CREW // BUILD 0.3</p>
+        <div class="brand-lockup">SNAKE <span>BUSTERS</span></div>
+        <h1>THEY MUTATE.<br><em>WE HIT HARDER.</em></h1>
+        <p class="title-sub">Entra en zonas infestadas, construye una build distinta en cada expedición y llega más lejos con tu escuadrón.</p>
+        <button id="title-enter" class="mega-button">ENTRAR AL HQ <span>→</span></button>
+        <small>PROTOTIPO · TODO EL PROGRESO ACTUAL ES LOCAL</small>
+      </div>
+      <div class="title-stamp">OUTBREAK RESPONSE UNIT<br><strong>SB-01</strong></div>
     </section>
-    <section class="arena" aria-label="Campo de juego">
-      <canvas id="game" width="1200" height="740" tabindex="0" aria-label="Juego Snake Busters. Mueve a Volt con WASD o flechas, apunta con el ratón y mantén clic para disparar. Espacio activa Sobrecarga. En móvil, toca la serpiente para disparar."></canvas>
-      <div id="announce" class="announce" aria-live="polite"></div>
-      <div id="overlay" class="overlay">
-        <div class="panel" id="panel">
-          <p class="eyebrow">BUSTER 01 / VOLT</p>
-          <h1>ROMPE.<br><span>EN CADENA.</span></h1>
-          <p class="intro">La serpiente se acerca al núcleo. Rompe sus segmentos para hacerla retroceder y sobrevive a cinco oleadas.</p>
-          <div class="start-controls"><span><kbd>WASD</kbd> Muévete</span><span><kbd>CLIC</kbd> Dispara · 3 cargas</span><span><kbd>ESPACIO</kbd> Sobrecarga</span></div>
-          <p class="touch-help">En móvil: mantén el dedo sobre tu objetivo. Mueve a Volt con los controles inferiores.</p>
-          <button id="start" class="primary">ENTRAR EN LA ARENA <span>↗</span></button>
-          <p class="footnote">Mismas oleadas en cada intento. Tu combinación marca la diferencia.</p>
+
+    <section id="lobby-screen" class="app-screen lobby-screen" hidden aria-label="Cuartel general">
+      <header class="lobby-top">
+        <button class="brand-button" id="lobby-home" aria-label="Snake Busters"><strong>SNAKE</strong><span>BUSTERS</span></button>
+        <div class="profile-chip">
+          <span class="profile-avatar">V</span>
+          <div><strong>BUSTER_001</strong><small>NIVEL 1 · RECLUTA</small></div>
         </div>
-      </div>
+        <div class="currency-row" aria-label="Recursos">
+          <span><i class="resource scrap"></i><strong>0</strong></span>
+          <span><i class="resource core"></i><strong>0</strong></span>
+        </div>
+      </header>
+
+      <nav class="lobby-nav" aria-label="Secciones del cuartel">
+        <button class="nav-card active" data-feature="busters"><span>01</span><strong>BUSTERS</strong><small>1 / ?</small></button>
+        <button class="nav-card" data-feature="locker"><span>02</span><strong>LOCKER</strong><small>COSMÉTICOS</small></button>
+        <button class="nav-card" data-feature="shop"><span>03</span><strong>TIENDA</strong><small>PRÓXIMAMENTE</small></button>
+        <button class="nav-card" data-feature="social"><span>04</span><strong>SOCIAL</strong><small>PARTY</small></button>
+      </nav>
+
+      <main class="hq-stage">
+        <div class="hq-backdrop" aria-hidden="true">
+          <div class="warning-stripe"></div>
+          <div class="containment-tube tube-one"><i></i></div>
+          <div class="containment-tube tube-two"><i></i></div>
+          <div class="hq-sign">OUTBREAK<br>RESPONSE</div>
+          <div class="cable c1"></div><div class="cable c2"></div>
+        </div>
+
+        <section class="mission-card">
+          <p class="micro">ACTIVE OUTBREAK</p>
+          <div class="mission-title"><span>01</span><div><strong>TOXIC SEWERS</strong><small>GREENFANG INFESTATION</small></div></div>
+          <div class="mission-progress">
+            <div><span>MEJOR SECTOR</span><strong>—</strong></div>
+            <div><span>AMENAZA</span><strong class="threat">LOW</strong></div>
+          </div>
+          <div class="sector-pips" aria-label="Cinco sectores"><i class="open">1</i><i>2</i><i>3</i><i>4</i><i class="boss">5</i></div>
+          <button id="lobby-play" class="play-button"><span><small>OUTBREAK 01</small>JUGAR</span><b>→</b></button>
+        </section>
+
+        <section class="buster-showcase" aria-label="Buster seleccionado: Volt">
+          <div class="volt-aura"></div>
+          <div class="volt-hero" aria-hidden="true">
+            <div class="volt-hair h1"></div><div class="volt-hair h2"></div><div class="volt-hair h3"></div>
+            <div class="volt-head"><i class="eye e1"></i><i class="eye e2"></i><span></span></div>
+            <div class="volt-pack"></div>
+            <div class="volt-body"><b>V</b></div>
+            <div class="volt-arm left"></div><div class="volt-arm right"></div>
+            <div class="volt-leg l1"></div><div class="volt-leg l2"></div>
+            <div class="volt-blaster"><i></i><b></b></div>
+            <div class="spark s1">ϟ</div><div class="spark s2">ϟ</div><div class="spark s3">ϟ</div>
+          </div>
+          <div class="buster-nameplate">
+            <p>SELECTED BUSTER</p>
+            <h2>VOLT</h2>
+            <span>CONDUCTOR</span>
+            <small>“Si brilla, conduce. Si conduce, revienta.”</small>
+          </div>
+        </section>
+
+        <aside class="party-panel">
+          <div class="party-heading"><div><p class="micro">SQUAD</p><strong>1 / 3</strong></div><button data-feature="social" class="invite-small">+ INVITAR</button></div>
+          <div class="party-slot filled"><span class="mini-volt">V</span><div><strong>TÚ</strong><small>VOLT · READY</small></div><i></i></div>
+          <button class="party-slot empty" data-feature="social"><span>+</span><div><strong>COMPAÑERO</strong><small>INVITAR</small></div></button>
+          <button class="party-slot empty" data-feature="social"><span>+</span><div><strong>COMPAÑERO</strong><small>INVITAR</small></div></button>
+          <div class="party-note"><span>CO-OP TARGET</span><p>La 0.3 sigue siendo jugable en solo. El squad real se conectará sobre esta estructura.</p></div>
+        </aside>
+      </main>
+
+      <div id="lobby-toast" class="lobby-toast" role="status" aria-live="polite"></div>
     </section>
-    <section class="loadout" aria-label="Buster, munición y habilidades">
-      <div class="buster"><span class="badge"><span>V</span></span><div><strong>VOLT</strong><span>Conductor · Blaster de arco encadenado</span></div></div>
-      <div class="combat-readout">
-        <div class="ammo-block"><span class="label">MUNICIÓN</span><div id="ammo" class="ammo" aria-label="3 de 3 cargas disponibles"><i></i><i></i><i></i></div><small id="ammo-text">3 / 3 · LISTA</small></div>
-        <div class="damage-block"><span class="label">DAÑO</span><strong id="damage">24</strong><small id="reload-stat">RECARGA 0.52 s</small></div>
-      </div>
-      <div id="build" class="build"><span class="muted">Tu primera mejora llega tras la oleada 1.</span></div>
-      <button id="ability" class="ability" disabled><span>SOBRECARGA <kbd>ESPACIO</kbd></span><small id="cooldown">Descarga sobre el objetivo y sus vecinos</small><span class="ability-meter" id="ability-meter"></span></button>
+
+    <section id="outbreak-screen" class="app-screen outbreak-screen" hidden aria-label="Selección de outbreak">
+      <header class="subscreen-top">
+        <button id="outbreak-back" class="back-button">← HQ</button>
+        <div class="subscreen-brand">OUTBREAK MAP <span>// 01</span></div>
+        <div class="squad-mini"><i>V</i><i>+</i><i>+</i></div>
+      </header>
+
+      <main class="outbreak-layout">
+        <section class="outbreak-intro">
+          <p class="kicker">WORLD 01 // SAB-UNDERCITY</p>
+          <h1>TOXIC<br><span>SEWERS</span></h1>
+          <p>Algo enorme está creciendo bajo la ciudad. Cada sector que limpias empuja a la criatura más adentro del nido. No esperes que llegue igual al siguiente.</p>
+          <div class="target-card">
+            <div class="wanted-head" aria-hidden="true"><i></i><i></i><b></b></div>
+            <div><small>TARGET</small><strong>GREENFANG</strong><span>ADAPTIVE SERPENT · CLASS C</span></div>
+          </div>
+          <div class="mutator-row"><span>VENOMOUS</span><span>SPLITTER</span><span>UNSTABLE</span></div>
+        </section>
+
+        <section class="sector-map" aria-label="Mapa de sectores">
+          <div class="map-line"></div>
+          <article class="sector-node available n1"><button data-sector="1"><span>01</span><strong>DRAIN GATE</strong><small>INICIO</small></button></article>
+          <article class="sector-node locked n2"><div><span>02</span><strong>FILTER HALL</strong><small>LOCKED</small></div></article>
+          <article class="sector-node locked n3"><div><span>03</span><strong>SPLIT PIPE</strong><small>LOCKED</small></div></article>
+          <article class="sector-node locked n4"><div><span>04</span><strong>THE SUMP</strong><small>LOCKED</small></div></article>
+          <article class="sector-node boss-node n5"><div><span>05</span><strong>GREENFANG</strong><small>ALPHA</small></div></article>
+        </section>
+
+        <aside class="deployment-card">
+          <p class="micro">DEPLOYMENT</p>
+          <h2>SECTOR 01</h2>
+          <strong>DRAIN GATE</strong>
+          <div class="deploy-rule"><span>OBJETIVO</span><p>Evita que Greenfang alcance el núcleo de contención.</p></div>
+          <div class="deploy-rule"><span>RUN</span><p>5 sectores · mejoras entre encuentros · build se reinicia al abandonar.</p></div>
+          <div class="squad-ready"><i>V</i><div><small>BUSTER</small><strong>VOLT</strong></div><span>READY</span></div>
+          <button id="outbreak-deploy" class="mega-button deploy">DESPLEGAR <span>→</span></button>
+          <small class="prototype-note">En esta versión los 5 sectores reutilizan el circuito actual mientras construimos la expedición real.</small>
+        </aside>
+      </main>
     </section>
-    <div class="mobile-controls" aria-label="Movimiento táctil"><button data-move="left" aria-label="Mover izquierda">←</button><button data-move="up" aria-label="Mover arriba">↑</button><button data-move="down" aria-label="Mover abajo">↓</button><button data-move="right" aria-label="Mover derecha">→</button></div>
-    <footer><div class="legend"><span><i class="normal"></i>ESTÁNDAR</span><span><i class="armor"></i>BLINDADO</span><span><i class="volatile"></i>EXPLOSIVO</span></div><span>Gasta las 3 cargas para hacer burst; sobrevivir exige saber cuándo recargar.</span><button id="help" class="text-button">Controles y reglas</button></footer>
-  </main>
+
+    <section id="game-screen" class="app-screen game-screen" hidden aria-label="Expedición en curso">
+      <main class="shell game-shell">
+        <header class="topbar game-topbar">
+          <button id="game-hq" class="wordmark game-wordmark" aria-label="Abandonar expedición y volver al HQ">SNAKE<span>BUSTERS</span><small>OUTBREAK 01 · TOXIC SEWERS</small></button>
+          <div class="top-actions"><span class="mode">SECTOR RUN · SOLO</span><button id="sound" class="quiet" aria-pressed="false">Sonido: no</button><button id="pause" class="quiet" disabled>Pausa <kbd>P</kbd></button></div>
+        </header>
+        <section class="hud" aria-label="Estado de la partida">
+          <div><span class="label">SECTOR</span><strong id="wave">01 <small>/ 05</small></strong></div>
+          <div><span class="label">PUNTUACIÓN</span><strong id="score">000000</strong></div>
+          <div class="integrity"><div class="integrity-label"><span class="label">NÚCLEO</span><span id="core-status">SEGURO</span></div><progress id="danger" value="75" max="100" aria-label="Margen restante antes de que la serpiente alcance el núcleo"></progress><small id="distance">—</small></div>
+          <div class="record"><span class="label">RÉCORD LOCAL</span><strong id="best">000000</strong></div>
+        </section>
+        <section class="arena" aria-label="Campo de juego">
+          <canvas id="game" width="1200" height="740" tabindex="0" aria-label="Juego Snake Busters. Mueve a Volt con WASD o flechas, apunta con el ratón y mantén clic para disparar. Espacio activa Sobrecarga."></canvas>
+          <div id="announce" class="announce" aria-live="polite"></div>
+          <div id="overlay" class="overlay" hidden><div class="panel" id="panel"></div></div>
+        </section>
+        <section class="loadout" aria-label="Buster, munición y habilidades">
+          <div class="buster"><span class="badge"><span>V</span></span><div><strong>VOLT</strong><span>Conductor · Blaster de arco encadenado</span></div></div>
+          <div class="combat-readout">
+            <div class="ammo-block"><span class="label">MUNICIÓN</span><div id="ammo" class="ammo" aria-label="3 de 3 cargas disponibles"><i></i><i></i><i></i></div><small id="ammo-text">3 / 3 · LISTA</small></div>
+            <div class="damage-block"><span class="label">DAÑO</span><strong id="damage">24</strong><small id="reload-stat">RECARGA 0.52 s</small></div>
+          </div>
+          <div id="build" class="build"><span class="muted">Tu primera mejora llega tras el sector 1.</span></div>
+          <button id="ability" class="ability" disabled><span>SOBRECARGA <kbd>ESPACIO</kbd></span><small id="cooldown">Descarga sobre el objetivo y sus vecinos</small><span class="ability-meter" id="ability-meter"></span></button>
+        </section>
+        <div class="mobile-controls" aria-label="Movimiento táctil"><button data-move="left" aria-label="Mover izquierda">←</button><button data-move="up" aria-label="Mover arriba">↑</button><button data-move="down" aria-label="Mover abajo">↓</button><button data-move="right" aria-label="Mover derecha">→</button></div>
+        <footer><div class="legend"><span><i class="normal"></i>ESTÁNDAR</span><span><i class="armor"></i>BLINDADO</span><span><i class="volatile"></i>EXPLOSIVO</span></div><span>3 cargas. Rompe segmentos. Haz retroceder a Greenfang.</span><button id="help" class="text-button">Controles</button></footer>
+      </main>
+    </section>
+  </div>
+
   <script type="module" src="./game.js"></script>
 </body>
 </html>
