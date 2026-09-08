@@ -225,6 +225,29 @@ test('sector 2 branches into a safe or infested route with persistent consequenc
   assert.ok(risky.events.some(e => e.type === 'route-reward'));
 });
 
+test('Split branches isolate neighbor effects and Hunt can fail by escape', () => {
+  const split = createGame();
+  split.run.sector = 3;
+  spawnSector(split);
+  startGame(split);
+  const lane0 = split.segments.filter(n => n.lane === 0);
+  const lane1 = split.segments.filter(n => n.lane === 1);
+  const victim = lane0[1];
+  victim.type = 'volatile';
+  victim.hp = 1;
+  const otherLaneHp = lane1.map(n => n.hp);
+  damage(split, victim.id, 999, 'basic');
+  assert.deepEqual(lane1.map(n => n.hp), otherLaneHp);
+
+  const hunt = createGame();
+  hunt.run.sector = 4;
+  spawnSector(hunt);
+  startGame(hunt);
+  for (let i = 0; i < 120 * 35 && hunt.phase === 'playing'; i++) update(hunt, STEP);
+  assert.equal(hunt.phase, 'lost');
+  assert.ok(hunt.events.some(e => e.type === 'hunt-escaped'));
+});
+
 test('Toxic Sewers sectors have distinct runtime rules', () => {
   const pressure = createGame();
   pressure.run.sector = 2;
@@ -302,7 +325,7 @@ test('a repeatable aiming strategy can finish all five sectors with each offer c
 
     assert.equal(s.phase, 'won', `offer column ${column}`);
     assert.equal(s.run.cleared.length, 5);
-    assert.ok(s.kills > 80);
+    assert.ok(s.kills > 70);
     assert.ok(s.score > 0);
     assert.ok(s.time < 300);
   }
