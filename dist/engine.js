@@ -574,21 +574,21 @@ function encounterRuleEffects(s, dt) {
 
     runtime.alphaAttackTimer -= dt;
     if (runtime.alphaAttackTimer <= 0) {
-      const radius = 60 + runtime.alphaPhase * 8;
+      const radius = 52 + runtime.alphaPhase * 6;
       s.hazards.push({
         id: s.uid++,
         type: 'venom-strike',
         x: s.player.x,
         y: s.player.y,
         radius,
-        telegraph: .85,
-        active: .5,
+        telegraph: 1.1,
+        active: .45,
         hit: false,
       });
-      runtime.alphaAttackTimer += Math.max(2.5, 4.3 - runtime.alphaPhase * .65);
+      runtime.alphaAttackTimer += Math.max(3.2, 5.1 - runtime.alphaPhase * .55);
       s.events.push({ type: 'venom-telegraph', x: s.player.x, y: s.player.y, radius });
     }
-    effects.speed = 1 + runtime.alphaPhase * .18;
+    effects.speed = 1 + runtime.alphaPhase * .12;
   }
 
   return effects;
@@ -606,8 +606,8 @@ function updateHazards(s, dt) {
       hazard.hit = true;
       s.ammo = Math.max(0, s.ammo - 1);
       if (s.ammo < s.buster.basic.ammoMax && s.ammoTimer <= 0) s.ammoTimer = s.buster.basic.ammoReload;
-      s.abilityCooldown = Math.min(s.buster.ability.cooldown, s.abilityCooldown + 1.5);
-      s.playerDebuff = Math.max(s.playerDebuff, 1.15);
+      s.abilityCooldown = Math.min(s.buster.ability.cooldown, s.abilityCooldown + .8);
+      s.playerDebuff = Math.max(s.playerDebuff, .8);
       s.events.push({ type: 'venom-hit', x: s.player.x, y: s.player.y });
     }
   }
