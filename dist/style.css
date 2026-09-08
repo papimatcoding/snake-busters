@@ -396,3 +396,70 @@ button:active:not(:disabled){transform:translateY(1px) scale(.99)}
   .combat-skill{min-height:58px;padding:7px}.combat-skill .skill-key{width:34px;height:34px}
   .game-screen .mobile-controls{display:flex;margin:7px 0 0}
 }
+
+
+/* 0.5 prototype cleanup */
+.lang-toggle{
+  border:1px solid #365563;
+  background:#102733;
+  color:#b7d0da;
+  border-radius:8px;
+  min-width:38px;
+  height:34px;
+  padding:0 9px;
+  font:900 9px ui-monospace,monospace;
+  letter-spacing:.7px;
+}
+.lang-toggle:hover{border-color:#6da2b4;color:#e6f5f8}
+.buster-art-placeholder{
+  position:relative;
+  width:min(340px,78%);
+  aspect-ratio:3/4;
+  display:grid;
+  place-items:center;
+  border:2px dashed #426474;
+  border-radius:24px;
+  background:
+    linear-gradient(135deg,rgba(115,218,250,.06),transparent 42%),
+    rgba(7,21,30,.62);
+  box-shadow:inset 0 0 50px rgba(0,0,0,.22),0 24px 40px rgba(0,0,0,.24);
+}
+.buster-art-placeholder:before,.buster-art-placeholder:after{
+  content:"";
+  position:absolute;
+  left:12%;
+  right:12%;
+  height:1px;
+  background:#294957;
+}
+.buster-art-placeholder:before{top:18%}
+.buster-art-placeholder:after{bottom:18%}
+.buster-art-placeholder>span{
+  font:1000 clamp(90px,10vw,150px)/1 system-ui;
+  color:#274b5c;
+  text-shadow:0 2px 0 #456f80;
+  letter-spacing:-8px;
+}
+.buster-art-placeholder>i{
+  position:absolute;
+  top:19%;
+  right:18%;
+  font-style:normal;
+  font-size:28px;
+  color:#8ddff4;
+  opacity:.65;
+}
+.buster-art-placeholder>small{
+  position:absolute;
+  left:10%;
+  right:10%;
+  bottom:8%;
+  text-align:center;
+  color:#65828f;
+  font:900 8px ui-monospace,monospace;
+  letter-spacing:1.2px;
+}
+@media(max-width:780px){
+  .buster-art-placeholder{width:min(270px,72%);height:310px;aspect-ratio:auto}
+  .lang-toggle{height:30px;min-width:34px;padding:0 7px}
+}
