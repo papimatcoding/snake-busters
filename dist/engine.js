@@ -81,7 +81,7 @@ export const OUTBREAKS = {
       { id: 'drain-gate', name: 'Drain Gate', kind: 'containment', rule: 'baseline', segments: 12, hp: 80, speed: 55, accel: .48, armorEvery: 5, volatileEvery: 6, mutationAfter: 'plated-scales' },
       { id: 'filter-hall', name: 'Filter Hall', kind: 'pressure', rule: 'filter-pressure', segments: 14, hp: 92, speed: 61, accel: .52, armorEvery: 5, volatileEvery: 5, mutationAfter: 'unstable-glands' },
       { id: 'split-pipe', name: 'Split Pipe', kind: 'split', rule: 'split-dual', splitLanes: 2, segments: 16, hp: 98, speed: 62, accel: .5, armorEvery: 5, volatileEvery: 6, mutationAfter: 'overgrowth' },
-      { id: 'the-sump', name: 'The Sump', kind: 'hunt', rule: 'hunt-escape', huntTarget: 1320, huntTime: 28, segments: 17, hp: 112, speed: 78, accel: .58, armorEvery: 4, volatileEvery: 5, mutationAfter: 'frenzy' },
+      { id: 'the-sump', name: 'The Sump', kind: 'hunt', rule: 'hunt-escape', huntTarget: 1320, huntTime: 20, segments: 17, hp: 112, speed: 78, accel: .58, armorEvery: 4, volatileEvery: 5, mutationAfter: 'frenzy' },
       { id: 'greenfang-alpha', name: 'Greenfang Alpha', kind: 'alpha', rule: 'alpha-phases', segments: 18, hp: 128, speed: 74, accel: .66, armorEvery: 4, volatileEvery: 5, headHpMultiplier: 2.2 },
     ],
   },
