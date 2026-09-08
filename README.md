@@ -2,10 +2,16 @@
 
 Prototipo de action-roguelite cooperativo: forma un equipo de Snake Busters, entra en zonas infestadas y persigue serpientes mutantes sector a sector. El combate actual sigue siendo individual, pero la estructura de producto ya está preparada alrededor de expediciones, progresión de mundo y squads de hasta tres jugadores.
 
-## Estado actual — 0.6.0 · 8 septiembre 2026
+## Estado actual — 0.7.0 · 8 septiembre 2026
 
-**Iteración de UI + expedición.** Se reemplaza la hoja de estilos heredada por un único sistema visual coherente, se rehace Greenfang como criatura conectada y se añade la primera bifurcación real de run con un objetivo alternativo destructible.
+**Iteración de estabilidad + encuentros.** Se corrige el breakpoint que trataba ~771 px como móvil, se elimina todo el falso arte de Greenfang de menús, Pages queda bloqueado por un smoke test real de Chrome y Toxic Sewers incorpora Split de dos ramas y Hunt cronometrado.
 
+- **Fix 700–900 px:** el breakpoint móvil baja a 680 px. Una ventana de ~771 px se trata como escritorio compacto, evitando el layout gigante/descuadrado visto en pruebas.
+- **Cero arte falso de Greenfang en menús:** se eliminan la serpiente CSS del inicio y la cabeza circular del mapa. El inicio usa ahora un terminal tipográfico y el mapa un identificador `GF`; GitHub no contiene referencias SVG.
+- **Smoke test de navegador:** el workflow de Pages arranca el servidor, abre Chrome headless con `?smoke=1`, entra automáticamente a partida y exige estado `playing`. El smoke también verifica que el canvas tenga al menos 300×250 px visibles y segmentos renderizables antes de desplegar.
+- **Split real:** el sector 3 usa dos ramas con cabezas independientes, velocidades ligeramente distintas y posiciones separadas. Básicos encadenados, Sobrecarga y explosiones respetan la rama y no saltan artificialmente a la otra.
+- **Hunt:** el sector 4 deja de ser una simple oleada. Hay que infligir **1320 de daño en 20 s** antes de que Greenfang escape. Alcanzar el daño completa el sector aunque quede cuerpo; agotar el tiempo provoca derrota por fuga.
+- **HUD contextual:** el panel superior derecho muestra el objetivo del encuentro: mutaciones, ramas de Split, nidos, progreso/tiempo de Hunt o fase del boss.
 - **UI 0.6 rehecha desde cero:** `style.css` deja de acumular capas antiguas y pasa a una sola jerarquía para inicio, HQ, mapa, partida, overlays y móvil. El dock de combate vive dentro de la arena y la zona de Volt se desplaza ligeramente para no solaparse.
 - **Pantalla inicial:** se elimina la falsa escena de personaje/serpiente y se sustituye por una composición de briefing + escáner de amenaza, más limpia y honesta con el estado de prototipo.
 - **Greenfang visual:** el Canvas dibuja primero un cuerpo continuo y después escamas/tipos de segmento; la cabeza es direccional y orgánica. Las barras de HP sólo aparecen al apuntar, recibir daño o en la cabeza.
@@ -85,9 +91,9 @@ node --test tests/engine.test.mjs
 npm run check
 ```
 
-Las **13 pruebas** cubren continuidad del recorrido, colisiones rápidas, explosiones, pausa, Tridente Tesla, carga de definitiva sólo con básicos, AOE apuntable, munición, persistencia, mutaciones, bifurcación segura/infestada, recompensa de ruta, reglas distintas por sector y runs completas. La simulación usa pasos fijos de 1/120 s y colisión barrida.
+Las **14 pruebas** cubren continuidad del recorrido, colisiones, explosiones, pausa, Tridente Tesla, definitiva, rutas, nidos, Split con ramas aisladas, Hunt completado/fallado, mutaciones, boss y runs completas. La simulación usa pasos fijos de 1/120 s y colisión barrida.
 
-Simulación 0.6: **ruta segura + kit completo ~83 s / 4 ultis**, **ruta infestada ~94 s / 3 ultis**, **ruta infestada a menor APM ~102 s / 4 ultis**. Una política sin ultimate todavía gana (~83 s), mientras que sólo básicos pierde en el sector 5. Esto es una comprobación de viabilidad, no balance humano final.
+Simulación 0.7: **ruta segura ~72 s / 3 ultis**, **ruta infestada ~86 s / 3 ultis**, **sin ultimate ~74 s**, **ruta infestada a menor APM ~91 s / 4 ultis**. Sólo básicos pierde en el sector 5. Hunt se resuelve en ~7–11 s en políticas activas y Split infestado ronda ~33 s. Esto es una comprobación de viabilidad, no balance humano final.
 
 ## Decisiones de diseño
 
@@ -100,11 +106,11 @@ Simulación 0.6: **ruta segura + kit completo ~83 s / 4 ultis**, **ruta infestad
 
 ## Próximo paso al retomar
 
-Seguir construyendo **maquinaria antes de personajes**. La siguiente iteración debería ampliar la bifurcación a más decisiones, añadir un objetivo `Hunt`/escape, evolucionar `Split` a múltiples rutas reales y profundizar Greenfang Alpha como boss. Mantener Volt como Buster de referencia.
+Seguir construyendo **maquinaria antes de personajes**. La siguiente iteración debería profundizar Greenfang Alpha con ataques/patrones propios, añadir una segunda bifurcación y empezar el esqueleto cooperativo 1–3 jugadores. Mantener Volt como Buster de referencia.
 
 Pendiente:
 
-- Probar la 0.6 completa en escritorio y móvil: nueva UI, dock dentro de arena, cuerpo conectado de Greenfang, bifurcación y nidos.
+- Probar la 0.7 especialmente en anchos 700–900 px, Split dual, Hunt, ruta infestada y visibilidad/interacción del canvas.
 - Afinar duración, carga de ultimate, dificultad y retroceso después de jugar; la simulación automática no representa balance humano.
 - Mantener cualquier Buster futuro bloqueado hasta que el contrato basic/ability/ultimate y las upgrades genéricas estén asentados.
 - Diseñar el cooperativo real de 1–3 jugadores: sincronización, escalado que cambie situaciones (no sólo HP), party y servidor autoritativo. Ranked puede existir después, pero ya no es el eje principal del producto.
