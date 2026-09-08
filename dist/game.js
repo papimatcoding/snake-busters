@@ -57,9 +57,9 @@ const I18N = {
     'toast.busters':'Volt is the reference Buster. Final character design comes after the systems are locked.','toast.locker':'Customization is reserved for skins, effects, banners and emotes.','toast.shop':'The shop has no economy or purchases yet.','toast.social':'The 3-player squad shell is ready. Real multiplayer comes later.'
   }
 };
-const t = key => I18N[language]?.[key] ?? I18N.es[key] ?? key;
+const tr = key => I18N[language]?.[key] ?? I18N.es[key] ?? key;
 const ENCOUNTER_KEYS = {'drain-gate':'enc.drain','filter-hall':'enc.filter','split-pipe':'enc.split','the-sump':'enc.sump','greenfang-alpha':'enc.alpha'};
-function encounterName(encounter = state.encounter) { return t(ENCOUNTER_KEYS[encounter?.id] || 'enc.drain'); }
+function encounterName(encounter = state.encounter) { return tr(ENCOUNTER_KEYS[encounter?.id] || 'enc.drain'); }
 const UPGRADE_EN = {
   chain: ['Double Arc', 'Each Tesla Trident bolt jumps to one additional neighbor.'],
   power: ['High Voltage', '+25% damage to all three basic bolts.'],
@@ -75,9 +75,9 @@ function upgradeCopy(u) {
 }
 function applyLanguage() {
   document.documentElement.lang = language;
-  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
   document.querySelectorAll('[data-lang-toggle]').forEach(btn => { btn.textContent = language === 'es' ? 'EN' : 'ES'; });
-  if ($('sound')) $('sound').textContent = t(sound ? 'sound.on' : 'sound.off');
+  if ($('sound')) $('sound').textContent = tr(sound ? 'sound.on' : 'sound.off');
   syncHUD();
 }
 function toggleLanguage() {
@@ -234,7 +234,7 @@ function drawBackground(t) {
     ctx.strokeStyle = '#547284'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-7, -6); ctx.lineTo(1, 0); ctx.lineTo(-7, 6); ctx.stroke(); ctx.restore();
   }
 
-  ctx.textAlign = 'center'; ctx.fillStyle = '#7797a8'; ctx.font = '800 10px ui-monospace, monospace'; ctx.fillText(t('arena.entry'), 130, 86);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#7797a8'; ctx.font = '800 10px ui-monospace, monospace'; ctx.fillText(tr('arena.entry'), 130, 86);
   const remaining = clamp(100 * (1 - state.head / PATH_LENGTH), 0, 100);
   const danger = remaining < 22;
   const p = pathAt(PATH_LENGTH);
@@ -244,7 +244,7 @@ function drawBackground(t) {
   ctx.rotate(reduceMotion ? 0 : t * .4); polygon(0, 0, 25, 6); ctx.fillStyle = danger ? '#3f2629' : '#193746'; ctx.fill(); ctx.stroke();
   ctx.rotate(reduceMotion ? 0 : -t * .8); polygon(0, 0, 14, 4, Math.PI / 4); ctx.fillStyle = danger ? '#ff8b75' : '#b9f5ff'; ctx.fill();
   ctx.restore();
-  ctx.fillStyle = danger ? '#ff8c7f' : '#a2eaf4'; ctx.font = '900 11px ui-monospace, monospace'; ctx.fillText(t('arena.core'), p.x, p.y - 54);
+  ctx.fillStyle = danger ? '#ff8c7f' : '#a2eaf4'; ctx.font = '900 11px ui-monospace, monospace'; ctx.fillText(tr('arena.core'), p.x, p.y - 54);
 
   if (danger && state.phase === 'playing') {
     ctx.strokeStyle = `rgba(255,105,89,${.20 + pulse * .22})`; ctx.lineWidth = 7; ctx.strokeRect(4, 4, WIDTH - 8, HEIGHT - 8);
@@ -474,7 +474,7 @@ function pause(help = false) {
   if (!['playing', 'paused'].includes(state.phase)) return;
   state.phase = 'paused'; shown = 'paused';
   const es = language === 'es';
-  panel(`<span class="run-tag">${t('world.name')} · SECTOR ${state.run.sector}</span><p class="eyebrow">${help ? (es ? 'CONTROLES' : 'CONTROLS') : (es ? 'EXPEDICIÓN EN PAUSA' : 'EXPEDITION PAUSED')}</p><h2>${help ? (es ? 'Kit de combate.' : 'Combat kit.') : encounterName()}</h2><ul class="rules"><li><b>WASD / ${es ? 'flechas' : 'arrows'}:</b> ${es ? 'movimiento' : 'movement'}.</li><li><b>${es ? 'Clic mantenido' : 'Hold click'}:</b> ${es ? 'Tridente Tesla: una carga dispara tres rayos.' : 'Tesla Trident: one ammo charge fires three bolts.'}</li><li><b>E:</b> ${es ? 'Sobrecarga, habilidad con enfriamiento.' : 'Overload, cooldown ability.'}</li><li><b>Q:</b> ${es ? 'apunta un área y descarga Tormenta. Sólo los básicos cargan la definitiva.' : 'aim an area and unleash Storm. Only basic attacks charge the ultimate.'}</li><li><b>${es ? 'Azul' : 'Blue'}:</b> ${es ? 'blindado' : 'armored'}. <b>${es ? 'Naranja' : 'Orange'}:</b> ${es ? 'explosivo' : 'explosive'}.</li></ul><div class="pause-actions"><button id="resume" class="primary">${es ? 'SEGUIR' : 'RESUME'} <span>↗</span></button><button id="retreat" class="secondary">${es ? 'ABANDONAR A LA BASE' : 'RETURN TO HQ'}</button></div>`);
+  panel(`<span class="run-tag">${tr('world.name')} · SECTOR ${state.run.sector}</span><p class="eyebrow">${help ? (es ? 'CONTROLES' : 'CONTROLS') : (es ? 'EXPEDICIÓN EN PAUSA' : 'EXPEDITION PAUSED')}</p><h2>${help ? (es ? 'Kit de combate.' : 'Combat kit.') : encounterName()}</h2><ul class="rules"><li><b>WASD / ${es ? 'flechas' : 'arrows'}:</b> ${es ? 'movimiento' : 'movement'}.</li><li><b>${es ? 'Clic mantenido' : 'Hold click'}:</b> ${es ? 'Tridente Tesla: una carga dispara tres rayos.' : 'Tesla Trident: one ammo charge fires three bolts.'}</li><li><b>E:</b> ${es ? 'Sobrecarga, habilidad con enfriamiento.' : 'Overload, cooldown ability.'}</li><li><b>Q:</b> ${es ? 'apunta un área y descarga Tormenta. Sólo los básicos cargan la definitiva.' : 'aim an area and unleash Storm. Only basic attacks charge the ultimate.'}</li><li><b>${es ? 'Azul' : 'Blue'}:</b> ${es ? 'blindado' : 'armored'}. <b>${es ? 'Naranja' : 'Orange'}:</b> ${es ? 'explosivo' : 'explosive'}.</li></ul><div class="pause-actions"><button id="resume" class="primary">${es ? 'SEGUIR' : 'RESUME'} <span>↗</span></button><button id="retreat" class="secondary">${es ? 'ABANDONAR A LA BASE' : 'RETURN TO HQ'}</button></div>`);
   $('resume').onclick = resume; $('retreat').onclick = () => leaveRun('lobby-screen'); syncHUD();
 }
 function syncUI() {
@@ -508,7 +508,7 @@ function syncUI() {
   if (['won', 'lost'].includes(state.phase)) {
     const won = state.phase === 'won';
     const es = language === 'es';
-    panel(`<span class="run-tag">${es ? 'BROTE 01' : 'OUTBREAK 01'} · ${t('world.name')}</span><p class="eyebrow">${won ? (es ? 'GREENFANG CONTENIDA' : 'GREENFANG CONTAINED') : (es ? 'CONTENCIÓN FALLIDA' : 'CONTAINMENT FAILED')}</p><h2>${won ? (es ? 'Expedición completa.<br>Por ahora.' : 'Expedition complete.<br>For now.') : (es ? 'Greenfang rompió<br>la línea.' : 'Greenfang broke<br>the line.')}</h2><div class="results"><div><small>${es ? 'PUNTUACIÓN' : 'SCORE'}</small><strong>${format(state.score)}</strong></div><div><small>${es ? 'MEJOR CADENA' : 'BEST CHAIN'}</small><strong>×${Math.min(8, state.maxCombo)}</strong></div><div><small>${es ? 'SECTORES' : 'SECTORS'}</small><strong>${won ? 5 : Math.max(0, state.wave - 1)} / 5</strong></div></div>${state.run.salvage ? `<div class="run-loot"><span>◆</span><div><small>${es ? 'MUESTRAS DE MUTACIÓN' : 'MUTATION SAMPLES'}</small><strong>+${state.run.salvage}</strong></div></div>` : ''}<p class="intro">${state.kills} ${es ? 'segmentos destruidos' : 'segments destroyed'} · ${Math.floor(state.time / 60)}:${String(Math.floor(state.time % 60)).padStart(2, '0')} · ${Math.round(state.hits / Math.max(1, state.shots * state.buster.basic.projectiles) * 100)} %</p><div class="result-actions"><button id="again" class="primary">${es ? 'REINTENTAR' : 'RETRY'} <span>↗</span></button><button id="return-hq" class="secondary">${es ? 'VOLVER A LA BASE' : 'RETURN TO HQ'}</button></div>`);
+    panel(`<span class="run-tag">${es ? 'BROTE 01' : 'OUTBREAK 01'} · ${tr('world.name')}</span><p class="eyebrow">${won ? (es ? 'GREENFANG CONTENIDA' : 'GREENFANG CONTAINED') : (es ? 'CONTENCIÓN FALLIDA' : 'CONTAINMENT FAILED')}</p><h2>${won ? (es ? 'Expedición completa.<br>Por ahora.' : 'Expedition complete.<br>For now.') : (es ? 'Greenfang rompió<br>la línea.' : 'Greenfang broke<br>the line.')}</h2><div class="results"><div><small>${es ? 'PUNTUACIÓN' : 'SCORE'}</small><strong>${format(state.score)}</strong></div><div><small>${es ? 'MEJOR CADENA' : 'BEST CHAIN'}</small><strong>×${Math.min(8, state.maxCombo)}</strong></div><div><small>${es ? 'SECTORES' : 'SECTORS'}</small><strong>${won ? 5 : Math.max(0, state.wave - 1)} / 5</strong></div></div>${state.run.salvage ? `<div class="run-loot"><span>◆</span><div><small>${es ? 'MUESTRAS DE MUTACIÓN' : 'MUTATION SAMPLES'}</small><strong>+${state.run.salvage}</strong></div></div>` : ''}<p class="intro">${state.kills} ${es ? 'segmentos destruidos' : 'segments destroyed'} · ${Math.floor(state.time / 60)}:${String(Math.floor(state.time % 60)).padStart(2, '0')} · ${Math.round(state.hits / Math.max(1, state.shots * state.buster.basic.projectiles) * 100)} %</p><div class="result-actions"><button id="again" class="primary">${es ? 'REINTENTAR' : 'RETRY'} <span>↗</span></button><button id="return-hq" class="secondary">${es ? 'VOLVER A LA BASE' : 'RETURN TO HQ'}</button></div>`);
     $('again').onclick = restart; $('return-hq').onclick = () => leaveRun('lobby-screen');
   }
 }
@@ -534,13 +534,13 @@ function syncHUD() {
     objectiveLabel.textContent = 'GREENFANG';
     objectiveValue.textContent = state.run.mutations.length
       ? (language === 'es' ? `${state.run.mutations.length} MUTACIÓN${state.run.mutations.length === 1 ? '' : 'ES'}` : `${state.run.mutations.length} MUTATION${state.run.mutations.length === 1 ? '' : 'S'}`)
-      : t('status.noMut');
+      : tr('status.noMut');
   }
   const remaining = clamp(100 * (1 - state.head / PATH_LENGTH), 0, 100);
   $('distance').textContent = language === 'es' ? `${Math.ceil(remaining)} % DE MARGEN` : `${Math.ceil(remaining)} % MARGIN`;
   $('danger').value = remaining;
   const coreStatus = $('core-status');
-  coreStatus.textContent = remaining > 45 ? t('status.safe') : remaining > 20 ? t('status.warn') : t('status.danger');
+  coreStatus.textContent = remaining > 45 ? tr('status.safe') : remaining > 20 ? tr('status.warn') : tr('status.danger');
   coreStatus.dataset.state = remaining > 45 ? 'safe' : remaining > 20 ? 'warn' : 'danger';
 
   const ammo = $('ammo'), ammoCells = [...ammo.children];
@@ -553,15 +553,15 @@ function syncHUD() {
   $('ammo-text').textContent = `${state.ammo} / ${state.buster.basic.ammoMax}`;
 
   $('ability').disabled = state.phase !== 'playing' || state.abilityCooldown > 0;
-  $('cooldown').textContent = state.abilityCooldown > 0 ? `${state.abilityCooldown.toFixed(1)} s` : t('status.ready');
+  $('cooldown').textContent = state.abilityCooldown > 0 ? `${state.abilityCooldown.toFixed(1)} s` : tr('status.ready');
   $('ability-meter').style.width = `${100 * (1 - state.abilityCooldown / state.buster.ability.cooldown)}%`;
 
   const ultMax = state.buster.ultimate.chargeMax, ultPct = clamp(100 * state.ultimateCharge / ultMax, 0, 100);
   $('ultimate').disabled = state.phase !== 'playing' || state.ultimateCharge < ultMax;
-  $('ultimate-status').textContent = state.ultimateCharge >= ultMax ? t('status.ready') : `${Math.floor(ultPct)} %`;
+  $('ultimate-status').textContent = state.ultimateCharge >= ultMax ? tr('status.ready') : `${Math.floor(ultPct)} %`;
   $('ultimate-meter').style.width = `${ultPct}%`;
   $('pause').disabled = !['playing', 'paused'].includes(state.phase);
-  $('pause').innerHTML = state.phase === 'paused' ? `${t('continue')} <kbd>P</kbd>` : `${t('pause')} <kbd>P</kbd>`;
+  $('pause').innerHTML = state.phase === 'paused' ? `${tr('continue')} <kbd>P</kbd>` : `${tr('pause')} <kbd>P</kbd>`;
 }
 function select(id) {
   if (!chooseUpgrade(state, id)) return;
@@ -610,13 +610,13 @@ $('game-hq').onclick = () => leaveRun('lobby-screen');
 document.querySelectorAll('[data-feature]').forEach(button => button.onclick = () => {
   const feature = button.dataset.feature;
   const keys = { busters:'toast.busters', locker:'toast.locker', shop:'toast.shop', social:'toast.social' };
-  lobbyToast(t(keys[feature] || 'common.soon'));
+  lobbyToast(tr(keys[feature] || 'common.soon'));
 });
 document.querySelectorAll('[data-lang-toggle]').forEach(button => button.onclick = toggleLanguage);
 $('pause').onclick = () => state.phase === 'paused' ? resume() : pause();
 $('ability').onclick = () => { state.aim = { ...pointer }; activateAbility(state); canvas.focus({ preventScroll: true }); };
 $('ultimate').onclick = () => { state.aim = { ...pointer }; activateUltimate(state); canvas.focus({ preventScroll: true }); };
-$('sound').onclick = () => { sound = !sound; $('sound').textContent = t(sound ? 'sound.on' : 'sound.off'); $('sound').setAttribute('aria-pressed', String(sound)); if (sound) tone(550, .1); };
+$('sound').onclick = () => { sound = !sound; $('sound').textContent = tr(sound ? 'sound.on' : 'sound.off'); $('sound').setAttribute('aria-pressed', String(sound)); if (sound) tone(550, .1); };
 $('help').onclick = () => { if (state.phase === 'playing' || state.phase === 'paused') pause(true); else announce(language === 'es' ? 'WASD · CLIC · E HABILIDAD · Q DEFINITIVA' : 'WASD · CLICK · E ABILITY · Q ULTIMATE'); };
 applyLanguage();
 
@@ -639,7 +639,7 @@ if (smokeMode) {
       clientX: rect.left + rect.width * .5,
       clientY: rect.top + rect.height * .35,
     }));
-    document.body.dataset.smoke = state.phase;
+    document.body.dataset.smoke = 'pending';
   } catch (error) {
     document.body.dataset.smoke = 'error';
     document.body.dataset.smokeError = String(error?.message || error);
