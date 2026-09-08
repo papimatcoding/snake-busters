@@ -463,3 +463,13 @@ button:active:not(:disabled){transform:translateY(1px) scale(.99)}
   .buster-art-placeholder{width:min(270px,72%);height:310px;aspect-ratio:auto}
   .lang-toggle{height:30px;min-width:34px;padding:0 7px}
 }
+
+.title-lang{
+  position:absolute;
+  z-index:8;
+  top:24px;
+  left:24px;
+}
+@media(max-width:780px){
+  .title-lang{top:14px;left:14px}
+}
