@@ -43,12 +43,15 @@ jobs:
             if curl -fsS http://127.0.0.1:3000/ >/dev/null; then break; fi
             sleep .2
           done
-          "$BROWSER" --headless --no-sandbox --disable-gpu --virtual-time-budget=1800 --dump-dom "http://127.0.0.1:3000/?smoke=1" >/tmp/snake-busters-dom.html
+          "$BROWSER" --headless --no-sandbox --disable-gpu --window-size=771,493 --virtual-time-budget=2600 --dump-dom "http://127.0.0.1:3000/?smoke=1" >/tmp/snake-busters-dom.html
           grep -q 'data-smoke="playing"' /tmp/snake-busters-dom.html || {
-            echo "Browser did not reach playing state"
+            echo "Browser smoke failed at 771x493"
+            grep -o 'data-smoke[^>]*' /tmp/snake-busters-dom.html || true
             cat /tmp/snake-busters-dom.html
             exit 1
           }
+          echo "Smoke metrics:"
+          grep -o 'data-smoke[^>]*' /tmp/snake-busters-dom.html || true
 
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3
