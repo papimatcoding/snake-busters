@@ -1,4 +1,4 @@
-import { createGame, startGame, update, activateAbility, chooseUpgrade, pathAt, PATH_LENGTH, UPGRADES, WIDTH, HEIGHT, STEP, clamp } from './engine.js';
+import { createGame, startGame, update, activateAbility, activateUltimate, chooseUpgrade, getEncounter, MUTATIONS, pathAt, PATH_LENGTH, UPGRADES, WIDTH, HEIGHT, STEP, clamp } from './engine.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game'), ctx = canvas.getContext('2d');
@@ -14,7 +14,6 @@ try {
   best = Number(localStorage.getItem('snake-busters:best:v1')) || 0;
   bestSector = Number(localStorage.getItem('snake-busters:toxic-sewers:best-sector:v1')) || 0;
 } catch {}
-$('best').textContent = format(best);
 
 function goScreen(id) {
   document.querySelectorAll('.app-screen').forEach(screen => { screen.hidden = screen.id !== id; });
@@ -64,11 +63,12 @@ function burst(x, y, color, count = 15) {
 function events() {
   for (const e of state.events) {
     if (e.type === 'shot') tone(390, .055, .014, 'triangle');
-    if (e.type === 'reload' && e.ammo === state.stats.ammoMax) tone(610, .045, .009, 'sine');
-    if (e.type === 'hit') { burst(e.x, e.y, '#d8f3ff', 2); labels.push({ x: e.x, y: e.y - 19, text: `-${Math.max(1, Math.round(e.amount))}`, life: .42, color: e.source === 'pulse' ? '#fff0a8' : e.source === 'explosion' ? '#ffb08e' : '#eaf9ff', small: true }); }
+    if (e.type === 'reload' && e.ammo === state.buster.basic.ammoMax) tone(610, .045, .009, 'sine');
+    if (e.type === 'hit') { burst(e.x, e.y, '#d8f3ff', 2); labels.push({ x: e.x, y: e.y - 19, text: `-${Math.max(1, Math.round(e.amount))}`, life: .42, color: e.source === 'ability' ? '#fff0a8' : e.source === 'ultimate' ? '#d8b8ff' : e.source === 'explosion' ? '#ffb08e' : '#eaf9ff', small: true }); }
     if (e.type === 'arc') arcs.push({ ...e, life: e.big ? .28 : .1 });
     if (e.type === 'pulse') { shake = reduceMotion ? 0 : 7; tone(150, .32, .06, 'sawtooth'); }
-    if (e.type === 'wave') announce(`SECTOR ${e.wave} / 5`);
+    if (e.type === 'ultimate') { shake = reduceMotion ? 0 : 12; tone(95, .55, .075, 'sawtooth'); announce('ULTIMATE · TORMENTA DE NÚCLEO'); }
+    if (e.type === 'wave') announce(`SECTOR ${e.wave} / 5 · ${state.encounter?.name || ''}`);
     if (e.type === 'break') {
       burst(e.x, e.y, colors[e.kind], e.kind === 'volatile' ? 30 : 18);
       rings.push({ x: e.x, y: e.y, life: .45, color: colors[e.kind], explosive: e.kind === 'volatile' });
@@ -76,13 +76,12 @@ function events() {
       shake = reduceMotion ? 0 : Math.min(9, 3 + e.combo); tone(170 + e.combo * 90, .15, .045, 'triangle');
     }
     if (e.type === 'clear') {
-      bestSector = Math.max(bestSector, state.wave);
+      bestSector = Math.max(bestSector, e.sector || state.run.sector);
       try { localStorage.setItem('snake-busters:toxic-sewers:best-sector:v1', String(bestSector)); } catch {}
       syncLobbyProgress();
     }
     if (e.type === 'end') {
       if (state.score > best) { best = state.score; try { localStorage.setItem('snake-busters:best:v1', String(best)); } catch {} }
-      $('best').textContent = format(best);
       tone(state.phase === 'won' ? 820 : 90, .6, .06);
     }
   }
@@ -115,8 +114,8 @@ function drawBackground(t) {
   ctx.strokeStyle = '#3b6175'; ctx.setLineDash([7, 11]); line(25, 585, 1175, 585); ctx.setLineDash([]);
 
   ctx.font = '800 11px ui-monospace, monospace'; ctx.fillStyle = '#80a8bd'; ctx.textAlign = 'left';
-  ctx.fillText('VOLT // BUSTER ZONE', 40, 614); ctx.fillText('ARENA 01 · CIRCUITO DE CONTENCIÓN', 40, 40);
-  ctx.textAlign = 'right'; ctx.fillStyle = '#5e8499'; ctx.fillText('SECTOR 07', 1160, 40);
+  ctx.fillText('BUSTER ZONE', 40, 614); ctx.fillText(`${state.encounter?.kind?.toUpperCase() || 'CONTAINMENT'} // ${state.encounter?.name?.toUpperCase() || 'DRAIN GATE'}`, 40, 40);
+  ctx.textAlign = 'right'; ctx.fillStyle = '#5e8499'; ctx.fillText(`SECTOR ${String(state.run.sector).padStart(2, '0')}`, 1160, 40);
 
   ctx.lineCap = 'round';
   track(); ctx.strokeStyle = '#06101a'; ctx.lineWidth = 68; ctx.stroke();
@@ -252,14 +251,13 @@ function render(t, dt) {
 function panel(html) { $('panel').innerHTML = html; $('overlay').hidden = false; resetInput(); $('panel').querySelector('button')?.focus({ preventScroll: true }); }
 function restart() {
   state = createGame(); startGame(state); particles = []; arcs = []; rings = []; labels = []; accumulator = 0;
-  $('build').innerHTML = '<span class="muted">Tu primera mejora llega tras el sector 1.</span>';
   pointer = { x: 600, y: 330 }; resetInput(); shown = ''; syncUI(); canvas.focus({ preventScroll: true });
 }
 function resume() { state.phase = 'playing'; shown = ''; accumulator = 0; resetInput(); syncUI(); canvas.focus({ preventScroll: true }); }
 function pause(help = false) {
   if (!['playing', 'paused'].includes(state.phase)) return;
   state.phase = 'paused'; shown = 'paused';
-  panel(`<span class="run-tag">TOXIC SEWERS · SECTOR ${state.wave}</span><p class="eyebrow">${help ? 'MANUAL DE CAMPO' : 'CONTENCIÓN EN PAUSA'}</p><h2>${help ? 'Domina a Volt.' : 'Greenfang no va a esperar.'}</h2><ul class="rules"><li><b>WASD o flechas:</b> mueve a Volt por la zona inferior.</li><li><b>Ratón + clic mantenido:</b> apunta y dispara. Tienes 3 cargas que se recuperan una a una.</li><li><b>Espacio o Sobrecarga:</b> descarga sobre el segmento más cercano a tu mira y sus vecinos.</li><li>Los segmentos naranjas explotan. Los azules resisten disparos directos.</li><li>Encadena roturas en menos de 1,65 s para multiplicar puntos hasta ×8.</li><li>Si Greenfang toca el núcleo, la expedición termina.</li></ul><div class="pause-actions"><button id="resume" class="primary">SEGUIR <span>↗</span></button><button id="retreat" class="secondary">ABANDONAR AL HQ</button></div>`);
+  panel(`<span class="run-tag">TOXIC SEWERS · SECTOR ${state.run.sector}</span><p class="eyebrow">${help ? 'CONTROLES' : 'EXPEDICIÓN EN PAUSA'}</p><h2>${help ? 'Kit de combate.' : state.encounter.name}</h2><ul class="rules"><li><b>WASD / flechas:</b> movimiento.</li><li><b>Clic mantenido:</b> ataque básico. Tres cargas que se recuperan una a una.</li><li><b>E:</b> Sobrecarga, habilidad con cooldown.</li><li><b>Q:</b> Tormenta de núcleo. La ultimate sólo se carga haciendo daño y rompiendo segmentos.</li><li><b>Azul:</b> blindado. <b>Naranja:</b> explosivo.</li><li>Si Greenfang alcanza el núcleo, termina la expedición.</li></ul><div class="pause-actions"><button id="resume" class="primary">SEGUIR <span>↗</span></button><button id="retreat" class="secondary">ABANDONAR AL HQ</button></div>`);
   $('resume').onclick = resume; $('retreat').onclick = () => leaveRun('lobby-screen'); syncHUD();
 }
 function syncUI() {
@@ -268,7 +266,8 @@ function syncUI() {
   shown = state.phase;
   if (state.phase === 'playing') { $('overlay').hidden = true; return; }
   if (state.phase === 'upgrade') {
-    panel(`<span class="run-tag">GREENFANG MUTATES</span><p class="eyebrow">SECTOR ${state.wave} LIMPIO / PROFUNDIZANDO EN EL NIDO</p><h2>Haz evolucionar<br>a Volt.</h2><p class="intro">Elige una mejora para el resto de esta expedición.</p><div class="upgrade-grid">${state.choices.map((id, i) => { const u = UPGRADES.find(u => u.id === id); return `<button class="upgrade-card" data-upgrade="${id}"><span class="symbol" aria-hidden="true">${u.icon}</span><strong>${u.name}</strong><p>${u.text}</p><small>ELEGIR MEJORA · ${i + 1}</small></button>`; }).join('')}</div>`);
+    const mutationId = getEncounter(state).mutationAfter, mutation = mutationId ? MUTATIONS[mutationId] : null;
+    panel(`<span class="run-tag">SECTOR ${state.run.sector} LIMPIO</span><p class="eyebrow">BUILD DE EXPEDICIÓN</p><h2>Elige tu mejora.</h2><p class="intro">Tu build persiste hasta que termine esta run.${mutation ? ` Greenfang también evoluciona: <b>${mutation.name}</b> — ${mutation.text}` : ''}</p><div class="upgrade-grid">${state.choices.map((id, i) => { const u = UPGRADES.find(u => u.id === id); return `<button class="upgrade-card" data-upgrade="${id}"><span class="symbol" aria-hidden="true">${u.icon}</span><strong>${u.name}</strong><p>${u.text}</p><small>ELEGIR · ${i + 1}</small></button>`; }).join('')}</div>`);
     document.querySelectorAll('[data-upgrade]').forEach(b => b.onclick = () => select(b.dataset.upgrade));
   }
   if (['won', 'lost'].includes(state.phase)) {
@@ -278,8 +277,9 @@ function syncUI() {
   }
 }
 function syncHUD() {
-  $('wave').innerHTML = `${String(state.wave).padStart(2, '0')} <small>/ 05</small>`;
-  $('score').textContent = format(state.score);
+  $('wave').innerHTML = `${String(state.run.sector).padStart(2, '0')} <small>/ 05</small>`;
+  $('encounter-name').textContent = state.encounter?.name?.toUpperCase() || 'DRAIN GATE';
+  $('mutation-count').textContent = state.run.mutations.length ? `${state.run.mutations.length} MUTACIÓN${state.run.mutations.length === 1 ? '' : 'ES'}` : 'SIN MUTACIONES';
   const remaining = clamp(100 * (1 - state.head / PATH_LENGTH), 0, 100);
   $('distance').textContent = `${Math.ceil(remaining)} % DE MARGEN`;
   $('danger').value = remaining;
@@ -291,22 +291,24 @@ function syncHUD() {
   ammoCells.forEach((cell, i) => {
     const filled = i < state.ammo;
     cell.classList.toggle('empty', !filled);
-    cell.style.setProperty('--reload', !filled && i === state.ammo && state.ammoTimer > 0 ? `${100 * (1 - state.ammoTimer / state.stats.ammoReload)}%` : '0%');
+    cell.style.setProperty('--reload', !filled && i === state.ammo && state.ammoTimer > 0 ? `${100 * (1 - state.ammoTimer / state.buster.basic.ammoReload)}%` : '0%');
   });
-  ammo.setAttribute('aria-label', `${state.ammo} de ${state.stats.ammoMax} cargas disponibles`);
-  $('ammo-text').textContent = state.ammo > 0 ? `${state.ammo} / ${state.stats.ammoMax} · ${state.ammo === state.stats.ammoMax ? 'LISTA' : 'RECARGANDO'}` : `0 / ${state.stats.ammoMax} · ${Math.max(0, state.ammoTimer).toFixed(1)} s`;
-  $('damage').textContent = Math.round(state.stats.damage);
-  $('reload-stat').textContent = `RECARGA ${state.stats.ammoReload.toFixed(2)} s`;
+  ammo.setAttribute('aria-label', `${state.ammo} de ${state.buster.basic.ammoMax} cargas disponibles`);
+  $('ammo-text').textContent = `${state.ammo} / ${state.buster.basic.ammoMax}`;
 
-  $('ability').disabled = state.phase !== 'playing' || state.cooldown > 0;
-  $('cooldown').textContent = state.cooldown > 0 ? `Recargando · ${state.cooldown.toFixed(1)} s` : 'Lista · golpea al objetivo y sus vecinos';
-  $('ability-meter').style.width = `${100 * (1 - state.cooldown / state.stats.cooldown)}%`;
+  $('ability').disabled = state.phase !== 'playing' || state.abilityCooldown > 0;
+  $('cooldown').textContent = state.abilityCooldown > 0 ? `${state.abilityCooldown.toFixed(1)} s` : 'LISTA';
+  $('ability-meter').style.width = `${100 * (1 - state.abilityCooldown / state.buster.ability.cooldown)}%`;
+
+  const ultMax = state.buster.ultimate.chargeMax, ultPct = clamp(100 * state.ultimateCharge / ultMax, 0, 100);
+  $('ultimate').disabled = state.phase !== 'playing' || state.ultimateCharge < ultMax;
+  $('ultimate-status').textContent = state.ultimateCharge >= ultMax ? 'LISTA' : `${Math.floor(ultPct)} %`;
+  $('ultimate-meter').style.width = `${ultPct}%`;
   $('pause').disabled = !['playing', 'paused'].includes(state.phase);
   $('pause').innerHTML = state.phase === 'paused' ? 'Continuar <kbd>P</kbd>' : 'Pausa <kbd>P</kbd>';
 }
 function select(id) {
   if (!chooseUpgrade(state, id)) return;
-  $('build').innerHTML = state.upgrades.map(id => `<span class="chip">${UPGRADES.find(u => u.id === id).name}</span>`).join('');
   resetInput(); accumulator = 0; syncUI(); canvas.focus({ preventScroll: true });
 }
 function toWorld(e) {
@@ -331,7 +333,8 @@ window.addEventListener('keydown', e => {
   if (e.repeat) return;
   keys.add(e.code);
   if (e.code === 'KeyP' || e.code === 'Escape') { if (state.phase === 'playing') pause(); else if (state.phase === 'paused') resume(); }
-  if (e.code === 'Space' && state.phase === 'playing') { state.aim = { ...pointer }; activateAbility(state); }
+  if ((e.code === 'KeyE' || e.code === 'Space') && state.phase === 'playing') { state.aim = { ...pointer }; activateAbility(state); }
+  if (e.code === 'KeyQ' && state.phase === 'playing') activateUltimate(state);
   if (state.phase === 'upgrade' && /^Digit[123]$/.test(e.code)) select(state.choices[Number(e.code.slice(-1)) - 1]);
 });
 window.addEventListener('keyup', e => keys.delete(e.code));
@@ -350,8 +353,9 @@ document.querySelectorAll('[data-feature]').forEach(button => button.onclick = (
 });
 $('pause').onclick = () => state.phase === 'paused' ? resume() : pause();
 $('ability').onclick = () => { state.aim = { ...pointer }; activateAbility(state); canvas.focus({ preventScroll: true }); };
+$('ultimate').onclick = () => { activateUltimate(state); canvas.focus({ preventScroll: true }); };
 $('sound').onclick = () => { sound = !sound; $('sound').textContent = `Sonido: ${sound ? 'sí' : 'no'}`; $('sound').setAttribute('aria-pressed', String(sound)); if (sound) tone(550, .1); };
-$('help').onclick = () => { if (state.phase === 'playing' || state.phase === 'paused') pause(true); else announce('WASD · CLIC PARA DISPARAR · ESPACIO: SOBRECARGA'); };
+$('help').onclick = () => { if (state.phase === 'playing' || state.phase === 'paused') pause(true); else announce('WASD · CLIC · E HABILIDAD · Q ULTIMATE'); };
 function frame(now) {
   const dt = Math.min(.05, (now - (last || now)) / 1000); last = now;
   if (state.phase === 'playing') {
