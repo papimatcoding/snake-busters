@@ -620,7 +620,14 @@ $('sound').onclick = () => { sound = !sound; $('sound').textContent = tr(sound ?
 $('help').onclick = () => { if (state.phase === 'playing' || state.phase === 'paused') pause(true); else announce(language === 'es' ? 'WASD · CLIC · E HABILIDAD · Q DEFINITIVA' : 'WASD · CLICK · E ABILITY · Q ULTIMATE'); };
 applyLanguage();
 
-const smokeMode = new URLSearchParams(location.search).has('smoke');
+const query = new URLSearchParams(location.search);
+const previewMode = query.get('preview');
+if (previewMode && !query.has('smoke')) {
+  if (previewMode === 'lobby') $('title-enter').click();
+  if (previewMode === 'outbreak') { $('title-enter').click(); $('lobby-play').click(); }
+  if (previewMode === 'game') { $('title-enter').click(); $('lobby-play').click(); $('outbreak-deploy').click(); }
+}
+const smokeMode = query.has('smoke');
 let smokeStartX = 0;
 if (smokeMode) {
   try {
