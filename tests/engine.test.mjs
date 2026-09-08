@@ -217,6 +217,7 @@ test('sector 2 branches into a safe or infested route with persistent consequenc
   assert.equal(ROUTES['infested-nest'].salvage, 1);
 
   assert.equal(risky.objectives.length, 3);
+  risky.encounterState.splitTriggered = true;
   risky.segments = [];
   risky.objectives = [];
   update(risky, STEP);
