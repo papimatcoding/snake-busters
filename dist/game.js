@@ -26,7 +26,7 @@ const I18N = {
     'world.name':'ALCANTARILLAS TÓXICAS','world.toxic':'ALCANTARILLAS','world.sewers':'TÓXICAS','world.infestation':'INFESTACIÓN GREENFANG',
     'mut.venomous':'VENENOSA','mut.splitter':'DIVISORA','mut.unstable':'INESTABLE',
     'enc.drain':'COMPUERTA DE DRENAJE','enc.filter':'SALA DE FILTROS','enc.split':'TUBERÍA BIFURCADA','enc.sump':'EL SUMIDERO','enc.alpha':'GREENFANG ALFA','enc.alphaTag':'ALFA',
-    'deploy.title':'DESPLIEGUE','deploy.run':'EXPEDICIÓN','deploy.runText':'5 sectores · mejoras entre encuentros · la combinación se reinicia al abandonar.','deploy.sector':'SECTOR 01','deploy.objective':'OBJETIVO','deploy.objectiveText':'Evita que Greenfang alcance el núcleo de contención.','deploy.go':'DESPLEGAR','deploy.note':'Los 5 sectores comparten circuito por ahora, pero ya tienen configuración, combinación y mutaciones persistentes propias.',
+    'deploy.title':'DESPLIEGUE','deploy.run':'EXPEDICIÓN','deploy.runText':'5 sectores · mejoras entre encuentros · la combinación se reinicia al abandonar.','deploy.sector':'SECTOR 01','deploy.objective':'OBJETIVO','deploy.objectiveText':'Evita que Greenfang alcance el núcleo de contención.','deploy.go':'DESPLEGAR','deploy.note':'Los encuentros ya incluyen bifurcaciones, objetivos secundarios, Split de dos ramas y Hunt cronometrado.',
     'combat.basic':'TRIDENTE TESLA','combat.ability':'HABILIDAD','combat.overload':'SOBRECARGA','combat.ultimate':'DEFINITIVA','combat.storm':'TORMENTA','arena.entry':'ENTRADA','arena.core':'NÚCLEO',
     'status.ready':'LISTA','status.safe':'SEGURO','status.warn':'ALERTA','status.danger':'PELIGRO','status.noMut':'SIN MUTACIONES',
     'sound.off':'Sonido: no','sound.on':'Sonido: sí','pause':'Pausa','continue':'Continuar',
@@ -41,7 +41,7 @@ const I18N = {
     'world.name':'TOXIC SEWERS','world.toxic':'TOXIC','world.sewers':'SEWERS','world.infestation':'GREENFANG INFESTATION',
     'mut.venomous':'VENOMOUS','mut.splitter':'SPLITTER','mut.unstable':'UNSTABLE',
     'enc.drain':'DRAIN GATE','enc.filter':'FILTER HALL','enc.split':'SPLIT PIPE','enc.sump':'THE SUMP','enc.alpha':'GREENFANG ALPHA','enc.alphaTag':'ALPHA',
-    'deploy.title':'DEPLOYMENT','deploy.run':'EXPEDITION','deploy.runText':'5 sectors · upgrades between encounters · the build resets when you leave.','deploy.sector':'SECTOR 01','deploy.objective':'OBJECTIVE','deploy.objectiveText':'Stop Greenfang from reaching the containment core.','deploy.go':'DEPLOY','deploy.note':'The 5 sectors share a track for now, but already have persistent encounter configs, builds and mutations.',
+    'deploy.title':'DEPLOYMENT','deploy.run':'EXPEDITION','deploy.runText':'5 sectors · upgrades between encounters · the build resets when you leave.','deploy.sector':'SECTOR 01','deploy.objective':'OBJECTIVE','deploy.objectiveText':'Stop Greenfang from reaching the containment core.','deploy.go':'DEPLOY','deploy.note':'Encounters now include route forks, secondary objectives, dual-branch Split and a timed Hunt.',
     'combat.basic':'TESLA TRIDENT','combat.ability':'ABILITY','combat.overload':'OVERLOAD','combat.ultimate':'ULTIMATE','combat.storm':'STORM','arena.entry':'ENTRY','arena.core':'CORE',
     'status.ready':'READY','status.safe':'SAFE','status.warn':'WARNING','status.danger':'DANGER','status.noMut':'NO MUTATIONS',
     'sound.off':'Sound: off','sound.on':'Sound: on','pause':'Pause','continue':'Continue',
@@ -586,9 +586,13 @@ $('help').onclick = () => { if (state.phase === 'playing' || state.phase === 'pa
 applyLanguage();
 
 const smokeMode = new URLSearchParams(location.search).has('smoke');
+let smokeStartX = 0;
 if (smokeMode) {
   try {
     deploy();
+    smokeStartX = state.player.x;
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', bubbles: true }));
+    $('ability').click();
     document.body.dataset.smoke = state.phase;
   } catch (error) {
     document.body.dataset.smoke = 'error';
@@ -611,9 +615,11 @@ function frame(now) {
   if (smokeMode) {
     const rect = canvas.getBoundingClientRect();
     const visible = rect.width >= 300 && rect.height >= 250 && getComputedStyle(canvas).visibility !== 'hidden' && getComputedStyle(canvas).display !== 'none';
-    document.body.dataset.smoke = state.phase === 'playing' && visible && state.segments.length > 0 ? 'playing' : 'layout-error';
+    const interactive = state.player.x > smokeStartX + .5 && state.abilityCooldown > 0;
+    document.body.dataset.smoke = state.phase === 'playing' && visible && interactive && state.segments.length > 0 ? 'playing' : 'layout-error';
     document.body.dataset.smokeCanvas = `${Math.round(rect.width)}x${Math.round(rect.height)}`;
     document.body.dataset.smokeSegments = String(state.segments.length);
+    document.body.dataset.smokeInteractive = interactive ? 'yes' : 'no';
   }
   if (announcementTime > 0) { announcementTime -= dt; if (announcementTime <= 0) $('announce').classList.remove('show'); }
   if (lobbyToastTime > 0) { lobbyToastTime -= dt; if (lobbyToastTime <= 0) $('lobby-toast')?.classList.remove('show'); }
