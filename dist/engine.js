@@ -366,7 +366,19 @@ function isBasicSource(source) {
   return source === 'basic' || source === 'basic-chain';
 }
 
+function branchFor(s, seg) {
+  const lane = seg?.lane || 0;
+  return s.segments.filter(n => (n.lane || 0) === lane);
+}
+
+function branchNeighbors(s, seg) {
+  const branch = branchFor(s, seg);
+  const index = branch.findIndex(n => n.id === seg.id);
+  return [branch[index - 1], branch[index + 1]].filter(Boolean);
+}
+
 export function damage(s, id, amount, source = 'shot') {
+  if (s.phase !== 'playing') return;
   const index = s.segments.findIndex(seg => seg.id === id);
   if (index < 0) return;
   const seg = s.segments[index];
@@ -390,7 +402,7 @@ export function damage(s, id, amount, source = 'shot') {
     }
     return;
   }
-  const neighbors = [s.segments[index - 1], s.segments[index + 1]].filter(Boolean).map(n => n.id);
+  const neighbors = branchNeighbors(s, seg).map(n => n.id);
   s.segments.splice(index, 1);
   s.kills++;
   s.combo = s.comboTimer > 0 ? s.combo + 1 : 1;
@@ -449,10 +461,11 @@ export function activateAbility(s) {
   if (s.phase !== 'playing' || s.abilityCooldown > 0 || !s.segments.length) return false;
   const target = nearestTarget(s);
   if (!target) return false;
-  const index = s.segments.indexOf(target);
-  const targets = [...s.segments]
+  const branch = branchFor(s, target);
+  const index = branch.indexOf(target);
+  const targets = branch
     .filter(n => n.d >= 0)
-    .sort((a, b) => Math.abs(s.segments.indexOf(a) - index) - Math.abs(s.segments.indexOf(b) - index))
+    .sort((a, b) => Math.abs(branch.indexOf(a) - index) - Math.abs(branch.indexOf(b) - index))
     .slice(0, s.buster.ability.targets);
 
   let from = { ...s.player };
@@ -666,10 +679,11 @@ export function update(s, dt, input = {}) {
       if (firstKind === 'objective') {
         damageObjective(s, first.id, s.buster.basic.damage, 'basic');
       } else {
-        const idx = s.segments.indexOf(first);
-        const neighbors = [...s.segments]
+        const branch = branchFor(s, first);
+        const idx = branch.indexOf(first);
+        const neighbors = branch
           .filter(n => n.id !== first.id && n.d >= 0)
-          .sort((a, c) => Math.abs(s.segments.indexOf(a) - idx) - Math.abs(s.segments.indexOf(c) - idx))
+          .sort((a, c) => Math.abs(branch.indexOf(a) - idx) - Math.abs(branch.indexOf(c) - idx))
           .slice(0, s.buster.basic.chain);
 
         damage(s, first.id, s.buster.basic.damage, 'basic');
