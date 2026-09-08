@@ -6,12 +6,38 @@ const dpr = Math.min(window.devicePixelRatio || 1, 2);
 canvas.width = WIDTH * dpr; canvas.height = HEIGHT * dpr;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const colors = { normal: '#c1fb60', armor: '#8cabff', volatile: '#ff9875' };
-let state = createGame(), last = 0, accumulator = 0, shown = 'ready', best = 0;
-let particles = [], arcs = [], labels = [], rings = [], shake = 0, announcementTime = 0;
+let state = createGame(), last = 0, accumulator = 0, shown = 'ready', best = 0, bestSector = 0;
+let particles = [], arcs = [], labels = [], rings = [], shake = 0, announcementTime = 0, lobbyToastTime = 0;
 let pointer = { x: 600, y: 330 }, shooting = false, keys = new Set(), touchMoves = new Map();
 let sound = false, audioContext;
-try { best = Number(localStorage.getItem('snake-busters:best:v1')) || 0; } catch {}
+try {
+  best = Number(localStorage.getItem('snake-busters:best:v1')) || 0;
+  bestSector = Number(localStorage.getItem('snake-busters:toxic-sewers:best-sector:v1')) || 0;
+} catch {}
 $('best').textContent = format(best);
+
+function goScreen(id) {
+  document.querySelectorAll('.app-screen').forEach(screen => { screen.hidden = screen.id !== id; });
+  document.body.dataset.screen = id;
+  resetInput();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+function syncLobbyProgress() {
+  const bestEl = $('lobby-best-sector');
+  if (bestEl) bestEl.textContent = bestSector ? `${String(bestSector).padStart(2, '0')} / 05` : '—';
+  const pips = $('lobby-sector-pips');
+  if (pips) [...pips.children].forEach((pip, i) => pip.classList.toggle('cleared', i < bestSector));
+}
+function lobbyToast(text) {
+  const toast = $('lobby-toast'); if (!toast) return;
+  toast.textContent = text; toast.classList.add('show'); lobbyToastTime = 2.3;
+}
+function leaveRun(destination = 'lobby-screen') {
+  state = createGame(); state.phase = 'ready'; particles = []; arcs = []; rings = []; labels = []; accumulator = 0; shown = 'ready';
+  $('overlay').hidden = true; syncLobbyProgress(); goScreen(destination);
+}
+function deploy() { goScreen('game-screen'); restart(); }
+syncLobbyProgress();
 function format(n) { return Math.round(n).toString().padStart(6, '0'); }
 function tone(frequency, duration, volume = .035, type = 'sine') {
   if (!sound) return;
@@ -42,12 +68,17 @@ function events() {
     if (e.type === 'hit') { burst(e.x, e.y, '#d8f3ff', 2); labels.push({ x: e.x, y: e.y - 19, text: `-${Math.max(1, Math.round(e.amount))}`, life: .42, color: e.source === 'pulse' ? '#fff0a8' : e.source === 'explosion' ? '#ffb08e' : '#eaf9ff', small: true }); }
     if (e.type === 'arc') arcs.push({ ...e, life: e.big ? .28 : .1 });
     if (e.type === 'pulse') { shake = reduceMotion ? 0 : 7; tone(150, .32, .06, 'sawtooth'); }
-    if (e.type === 'wave') announce(`OLEADA ${e.wave} / 5`);
+    if (e.type === 'wave') announce(`SECTOR ${e.wave} / 5`);
     if (e.type === 'break') {
       burst(e.x, e.y, colors[e.kind], e.kind === 'volatile' ? 30 : 18);
       rings.push({ x: e.x, y: e.y, life: .45, color: colors[e.kind], explosive: e.kind === 'volatile' });
       labels.push({ x: e.x, y: e.y - 25, text: e.combo > 1 ? `×${Math.min(e.combo, 8)} CADENA` : '+100', life: .85, color: e.combo > 1 ? '#fff0ac' : '#c1fb60' });
       shake = reduceMotion ? 0 : Math.min(9, 3 + e.combo); tone(170 + e.combo * 90, .15, .045, 'triangle');
+    }
+    if (e.type === 'clear') {
+      bestSector = Math.max(bestSector, state.wave);
+      try { localStorage.setItem('snake-busters:toxic-sewers:best-sector:v1', String(bestSector)); } catch {}
+      syncLobbyProgress();
     }
     if (e.type === 'end') {
       if (state.score > best) { best = state.score; try { localStorage.setItem('snake-busters:best:v1', String(best)); } catch {} }
@@ -221,15 +252,15 @@ function render(t, dt) {
 function panel(html) { $('panel').innerHTML = html; $('overlay').hidden = false; resetInput(); $('panel').querySelector('button')?.focus({ preventScroll: true }); }
 function restart() {
   state = createGame(); startGame(state); particles = []; arcs = []; rings = []; labels = []; accumulator = 0;
-  $('build').innerHTML = '<span class="muted">Tu primera mejora llega tras la oleada 1.</span>';
+  $('build').innerHTML = '<span class="muted">Tu primera mejora llega tras el sector 1.</span>';
   pointer = { x: 600, y: 330 }; resetInput(); shown = ''; syncUI(); canvas.focus({ preventScroll: true });
 }
 function resume() { state.phase = 'playing'; shown = ''; accumulator = 0; resetInput(); syncUI(); canvas.focus({ preventScroll: true }); }
 function pause(help = false) {
   if (!['playing', 'paused'].includes(state.phase)) return;
   state.phase = 'paused'; shown = 'paused';
-  panel(`<p class="eyebrow">${help ? 'MANUAL DE CAMPO' : 'RESPIRA. EL NÚCLEO ESTÁ A SALVO.'}</p><h2>${help ? 'Domina el circuito.' : 'Partida en pausa.'}</h2><ul class="rules"><li><b>WASD o flechas:</b> mueve a Volt por la zona inferior.</li><li><b>Ratón + clic mantenido:</b> apunta y dispara. Tienes 3 cargas de munición que se recuperan una a una; en móvil, mantén el dedo sobre el objetivo.</li><li><b>Espacio o Sobrecarga:</b> descarga sobre el segmento más cercano a tu mira y sus vecinos.</li><li>Rompe segmentos naranjas para provocar explosiones. Los azules resisten los disparos directos.</li><li>Encadena roturas en menos de 1,65 s para multiplicar sus puntos, hasta ×8. Completar rápido da una bonificación.</li><li>La serpiente acelera con el tiempo. Si llega al núcleo, pierdes.</li></ul><button id="resume" class="primary">VOLVER A LA ARENA <span>↗</span></button>`);
-  $('resume').onclick = resume; syncHUD();
+  panel(`<span class="run-tag">TOXIC SEWERS · SECTOR ${state.wave}</span><p class="eyebrow">${help ? 'MANUAL DE CAMPO' : 'CONTENCIÓN EN PAUSA'}</p><h2>${help ? 'Domina a Volt.' : 'Greenfang no va a esperar.'}</h2><ul class="rules"><li><b>WASD o flechas:</b> mueve a Volt por la zona inferior.</li><li><b>Ratón + clic mantenido:</b> apunta y dispara. Tienes 3 cargas que se recuperan una a una.</li><li><b>Espacio o Sobrecarga:</b> descarga sobre el segmento más cercano a tu mira y sus vecinos.</li><li>Los segmentos naranjas explotan. Los azules resisten disparos directos.</li><li>Encadena roturas en menos de 1,65 s para multiplicar puntos hasta ×8.</li><li>Si Greenfang toca el núcleo, la expedición termina.</li></ul><div class="pause-actions"><button id="resume" class="primary">SEGUIR <span>↗</span></button><button id="retreat" class="secondary">ABANDONAR AL HQ</button></div>`);
+  $('resume').onclick = resume; $('retreat').onclick = () => leaveRun('lobby-screen'); syncHUD();
 }
 function syncUI() {
   syncHUD();
@@ -237,13 +268,13 @@ function syncUI() {
   shown = state.phase;
   if (state.phase === 'playing') { $('overlay').hidden = true; return; }
   if (state.phase === 'upgrade') {
-    panel(`<p class="eyebrow">OLEADA ${state.wave} COMPLETADA / NÚCLEO A SALVO</p><h2>Más poder.<br>Tu siguiente combinación.</h2><p class="intro">Elige una mejora para el resto de esta partida.</p><div class="upgrade-grid">${state.choices.map((id, i) => { const u = UPGRADES.find(u => u.id === id); return `<button class="upgrade-card" data-upgrade="${id}"><span class="symbol" aria-hidden="true">${u.icon}</span><strong>${u.name}</strong><p>${u.text}</p><small>ELEGIR MEJORA · ${i + 1}</small></button>`; }).join('')}</div>`);
+    panel(`<span class="run-tag">GREENFANG MUTATES</span><p class="eyebrow">SECTOR ${state.wave} LIMPIO / PROFUNDIZANDO EN EL NIDO</p><h2>Haz evolucionar<br>a Volt.</h2><p class="intro">Elige una mejora para el resto de esta expedición.</p><div class="upgrade-grid">${state.choices.map((id, i) => { const u = UPGRADES.find(u => u.id === id); return `<button class="upgrade-card" data-upgrade="${id}"><span class="symbol" aria-hidden="true">${u.icon}</span><strong>${u.name}</strong><p>${u.text}</p><small>ELEGIR MEJORA · ${i + 1}</small></button>`; }).join('')}</div>`);
     document.querySelectorAll('[data-upgrade]').forEach(b => b.onclick = () => select(b.dataset.upgrade));
   }
   if (['won', 'lost'].includes(state.phase)) {
     const won = state.phase === 'won';
-    panel(`<p class="eyebrow">${won ? 'CIRCUITO COMPLETADO' : 'BRECHA EN EL NÚCLEO'}</p><h2>${won ? 'Cinco oleadas.<br>Una buena descarga.' : 'Esta vez ha pasado.<br>La siguiente es tuya.'}</h2><div class="results"><div><small>PUNTUACIÓN</small><strong>${format(state.score)}</strong></div><div><small>MEJOR CADENA</small><strong>×${Math.min(8, state.maxCombo)}</strong></div><div><small>OLEADAS</small><strong>${won ? 5 : state.wave - 1} / 5</strong></div></div><p class="intro">${state.kills} segmentos destruidos · ${Math.floor(state.time / 60)}:${String(Math.floor(state.time % 60)).padStart(2, '0')} de combate · ${Math.round(state.hits / Math.max(1, state.shots) * 100)} % de precisión</p><button id="again" class="primary">OTRA PARTIDA <span>↗</span></button><p class="footnote">Récord guardado solo en este navegador. El competitivo online llegará más adelante.</p>`);
-    $('again').onclick = restart;
+    panel(`<span class="run-tag">OUTBREAK 01 · TOXIC SEWERS</span><p class="eyebrow">${won ? 'GREENFANG CONTENIDA' : 'CONTENCIÓN FALLIDA'}</p><h2>${won ? 'Expedición completa.<br>Por ahora.' : 'Greenfang rompió<br>la línea.'}</h2><div class="results"><div><small>PUNTUACIÓN</small><strong>${format(state.score)}</strong></div><div><small>MEJOR CADENA</small><strong>×${Math.min(8, state.maxCombo)}</strong></div><div><small>SECTORES</small><strong>${won ? 5 : Math.max(0, state.wave - 1)} / 5</strong></div></div><p class="intro">${state.kills} segmentos destruidos · ${Math.floor(state.time / 60)}:${String(Math.floor(state.time % 60)).padStart(2, '0')} de combate · ${Math.round(state.hits / Math.max(1, state.shots) * 100)} % de precisión</p><div class="result-actions"><button id="again" class="primary">REINTENTAR <span>↗</span></button><button id="return-hq" class="secondary">VOLVER AL HQ</button></div><p class="footnote">Tu mejor sector de Toxic Sewers queda guardado localmente.</p>`);
+    $('again').onclick = restart; $('return-hq').onclick = () => leaveRun('lobby-screen');
   }
 }
 function syncHUD() {
@@ -306,7 +337,17 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => keys.delete(e.code));
 window.addEventListener('blur', () => { resetInput(); if (state.phase === 'playing') pause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { resetInput(); if (state.phase === 'playing') pause(); } });
-$('start').onclick = restart;
+$('title-enter').onclick = () => goScreen('lobby-screen');
+$('lobby-home').onclick = () => goScreen('title-screen');
+$('lobby-play').onclick = () => goScreen('outbreak-screen');
+$('outbreak-back').onclick = () => goScreen('lobby-screen');
+$('outbreak-deploy').onclick = deploy;
+$('game-hq').onclick = () => leaveRun('lobby-screen');
+document.querySelectorAll('[data-feature]').forEach(button => button.onclick = () => {
+  const feature = button.dataset.feature;
+  const copy = { busters: 'Volt es el primer Buster. El roster llegará sobre esta pantalla.', locker: 'Locker preparado para skins, efectos, banners y emotes.', shop: 'La tienda todavía no tiene economía ni compras.', social: 'Party de 3 preparada visualmente. El multiplayer real vendrá después.' };
+  lobbyToast(copy[feature] || 'Próximamente.');
+});
 $('pause').onclick = () => state.phase === 'paused' ? resume() : pause();
 $('ability').onclick = () => { state.aim = { ...pointer }; activateAbility(state); canvas.focus({ preventScroll: true }); };
 $('sound').onclick = () => { sound = !sound; $('sound').textContent = `Sonido: ${sound ? 'sí' : 'no'}`; $('sound').setAttribute('aria-pressed', String(sound)); if (sound) tone(550, .1); };
@@ -325,6 +366,7 @@ function frame(now) {
   } else accumulator = 0;
   events(); syncUI(); render(now / 1000, state.phase === 'paused' ? 0 : dt);
   if (announcementTime > 0) { announcementTime -= dt; if (announcementTime <= 0) $('announce').classList.remove('show'); }
+  if (lobbyToastTime > 0) { lobbyToastTime -= dt; if (lobbyToastTime <= 0) $('lobby-toast')?.classList.remove('show'); }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
