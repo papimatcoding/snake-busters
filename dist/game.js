@@ -1,4 +1,4 @@
-import { createGame, startGame, update, activateAbility, activateUltimate, chooseUpgrade, getEncounter, MUTATIONS, pathAt, PATH_LENGTH, UPGRADES, WIDTH, HEIGHT, STEP, clamp } from './engine.js';
+import { createGame, startGame, update, activateAbility, activateUltimate, chooseUpgrade, chooseRoute, getEncounter, MUTATIONS, ROUTES, pathAt, PATH_LENGTH, UPGRADES, WIDTH, HEIGHT, STEP, clamp } from './engine.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game'), ctx = canvas.getContext('2d');
@@ -138,6 +138,9 @@ function events() {
     if (e.type === 'split') announce(language === 'es' ? `TUBERÍA BIFURCADA · +${e.count} SEGMENTOS` : `SPLIT PIPE · +${e.count} SEGMENTS`);
     if (e.type === 'sludge') announce(language === 'es' ? 'PULSO DE LODO TÓXICO' : 'TOXIC SLUDGE PULSE');
     if (e.type === 'alpha-phase') announce(language === 'es' ? `GREENFANG ALFA · FASE ${e.phase + 1}` : `GREENFANG ALPHA · PHASE ${e.phase + 1}`);
+    if (e.type === 'objective-hit') { burst(e.x, e.y, '#b9e973', 3); labels.push({ x:e.x, y:e.y-24, text:`-${Math.max(1,Math.round(e.amount))}`, life:.42, color:'#dfffa4', small:true }); }
+    if (e.type === 'objective-break') { burst(e.x, e.y, '#c5f76e', 24); rings.push({ x:e.x, y:e.y, life:.48, color:'#c5f76e' }); announce(language === 'es' ? 'NIDO DESTRUIDO' : 'NEST DESTROYED'); }
+    if (e.type === 'route-reward') announce(language === 'es' ? `+ ${e.salvage} MUESTRA DE MUTACIÓN` : `+ ${e.salvage} MUTATION SAMPLE`);
     if (e.type === 'break') {
       burst(e.x, e.y, colors[e.kind], e.kind === 'volatile' ? 30 : 18);
       rings.push({ x: e.x, y: e.y, life: .45, color: colors[e.kind], explosive: e.kind === 'volatile' });
@@ -214,6 +217,28 @@ function drawBackground(t) {
     ctx.strokeStyle = `rgba(255,105,89,${.20 + pulse * .22})`; ctx.lineWidth = 7; ctx.strokeRect(4, 4, WIDTH - 8, HEIGHT - 8);
   }
 }
+function drawObjectives(t) {
+  for (const obj of state.objectives || []) {
+    if (obj.type !== 'nest') continue;
+    const hpRatio = Math.max(0, obj.hp / obj.maxHp);
+    const pulse = reduceMotion ? 0 : Math.sin(t * 5 + obj.x * .01) * 2;
+    ctx.save(); ctx.translate(obj.x, obj.y);
+    ctx.shadowColor = 'rgba(153,205,83,.38)'; ctx.shadowBlur = 18;
+    ctx.fillStyle = obj.flash > 0 ? '#f6ffdd' : '#253b22';
+    ctx.beginPath(); ctx.ellipse(0, 3, 31 + pulse, 24 + pulse * .5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#789b4d'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#516f38';
+    for (const [x,y,r] of [[-11,-2,8],[4,-8,9],[12,6,7],[-3,9,6]]) { circle(x,y,r); ctx.fill(); }
+    ctx.fillStyle = '#d9f79d'; circle(4,-8,3.2); ctx.fill();
+    ctx.restore();
+
+    const w=46,x=obj.x-w/2,y=obj.y-34;
+    ctx.fillStyle='rgba(3,10,16,.86)';ctx.fillRect(x-2,y-2,w+4,6);
+    ctx.fillStyle=hpRatio<.3?'#ff7d72':'#a9d766';ctx.fillRect(x,y,w*hpRatio,2);
+  }
+}
+
 function drawSnake(t) {
   const visible = state.segments.filter(seg => seg.d >= 0);
   if (!visible.length) return;
@@ -345,7 +370,7 @@ function drawPlayer(t) {
 function render(t, dt) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, WIDTH, HEIGHT);
   ctx.save(); if (shake > .1) { ctx.translate(Math.sin(t * 89) * shake, Math.cos(t * 107) * shake * .5); shake *= Math.exp(-dt * 18); }
-  drawBackground(t); drawSnake(t); drawPlayer(t);
+  drawBackground(t); drawObjectives(t); drawSnake(t); drawPlayer(t);
   ctx.lineWidth = 3; ctx.strokeStyle = '#d5ff8d'; ctx.shadowColor = '#baff70'; ctx.shadowBlur = 8;
   for (const b of state.bullets) {
     const len = Math.hypot(b.vx, b.vy) || 1, nx = -b.vy / len, ny = b.vx / len;
@@ -402,6 +427,21 @@ function syncUI() {
     panel(`<span class="run-tag">SECTOR ${state.run.sector} ${es ? 'LIMPIO' : 'CLEARED'}</span><p class="eyebrow">${es ? 'COMBINACIÓN DE EXPEDICIÓN' : 'EXPEDITION BUILD'}</p><h2>${es ? 'Elige tu mejora.' : 'Choose your upgrade.'}</h2><p class="intro">${es ? 'Tu combinación persiste hasta que termine la expedición.' : 'Your build persists until the expedition ends.'}${mutation ? ` Greenfang: <b>${mutationName}</b> — ${mutationText}` : ''}</p><div class="upgrade-grid">${state.choices.map((id, i) => { const u = UPGRADES.find(u => u.id === id), copy = upgradeCopy(u); return `<button class="upgrade-card" data-upgrade="${id}"><span class="symbol" aria-hidden="true">${u.icon}</span><strong>${copy.name}</strong><p>${copy.text}</p><small>${es ? 'ELEGIR' : 'CHOOSE'} · ${i + 1}</small></button>`; }).join('')}</div>`);
     document.querySelectorAll('[data-upgrade]').forEach(b => b.onclick = () => select(b.dataset.upgrade));
   }
+  if (state.phase === 'route') {
+    const es = language === 'es';
+    const cards = state.run.routeChoices.map(id => {
+      const route = ROUTES[id];
+      const risky = route.risk === 'danger';
+      const name = es ? route.name : (id === 'maintenance' ? 'Maintenance Duct' : 'Infested Nest');
+      const text = es ? route.text : (id === 'maintenance'
+        ? 'Stable route: Greenfang advances 10% slower in the next sector.'
+        : 'More body, health and speed plus 3 nests. Clear it to recover 1 mutation sample.');
+      return `<button class="route-card ${risky ? 'danger-route' : 'safe-route'}" data-route="${id}"><span>${risky ? '!' : '✓'}</span><div><small>${risky ? (es?'RIESGO ALTO':'HIGH RISK') : (es?'RUTA ESTABLE':'STABLE ROUTE')}</small><strong>${name}</strong><p>${text}</p></div></button>`;
+    }).join('');
+    panel(`<span class="run-tag">${es?'BIFURCACIÓN DE EXPEDICIÓN':'EXPEDITION FORK'}</span><p class="eyebrow">${es?'ELIGE EL SIGUIENTE CONDUCTO':'CHOOSE THE NEXT PATH'}</p><h2>${es?'¿Seguro o infestado?':'Safe or infested?'}</h2><p class="intro">${es?'La decisión modifica el siguiente sector y queda guardada en esta run.':'This decision changes the next sector and persists for this run.'}</p><div class="route-grid">${cards}</div>`);
+    document.querySelectorAll('[data-route]').forEach(b => b.onclick = () => selectRoute(b.dataset.route));
+  }
+
   if (['won', 'lost'].includes(state.phase)) {
     const won = state.phase === 'won';
     const es = language === 'es';
@@ -412,7 +452,9 @@ function syncUI() {
 function syncHUD() {
   $('wave').innerHTML = `${String(state.run.sector).padStart(2, '0')} <small>/ 05</small>`;
   $('encounter-name').textContent = encounterName().toUpperCase();
-  $('mutation-count').textContent = state.run.mutations.length ? (language === 'es' ? `${state.run.mutations.length} MUTACIÓN${state.run.mutations.length === 1 ? '' : 'ES'}` : `${state.run.mutations.length} MUTATION${state.run.mutations.length === 1 ? '' : 'S'}`) : t('status.noMut');
+  $('mutation-count').textContent = state.run.mutations.length
+    ? (language === 'es' ? `${state.run.mutations.length} MUTACIÓN${state.run.mutations.length === 1 ? '' : 'ES'}` : `${state.run.mutations.length} MUTATION${state.run.mutations.length === 1 ? '' : 'S'}`)
+    : t('status.noMut');
   const remaining = clamp(100 * (1 - state.head / PATH_LENGTH), 0, 100);
   $('distance').textContent = language === 'es' ? `${Math.ceil(remaining)} % DE MARGEN` : `${Math.ceil(remaining)} % MARGIN`;
   $('danger').value = remaining;
@@ -443,6 +485,10 @@ function syncHUD() {
 function select(id) {
   if (!chooseUpgrade(state, id)) return;
   resetInput(); accumulator = 0; syncUI(); canvas.focus({ preventScroll: true });
+}
+function selectRoute(id) {
+  if (!chooseRoute(state, id)) return;
+  resetInput(); accumulator = 0; shown = ''; syncUI(); canvas.focus({ preventScroll: true });
 }
 function toWorld(e) {
   const r = canvas.getBoundingClientRect(), scale = Math.min(r.width / WIDTH, r.height / HEIGHT);
