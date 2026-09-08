@@ -64,6 +64,14 @@ jobs:
           fi
           echo "Smoke metrics:"
           grep -o 'data-smoke[^>]*' /tmp/snake-busters-dom.html || true
+          "$BROWSER" --headless --no-sandbox --disable-gpu --window-size=771,493 --virtual-time-budget=2600 --screenshot=/tmp/snake-busters-smoke.png "http://127.0.0.1:3000/?smoke=1"
+
+      - name: Upload smoke screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: snake-busters-smoke
+          path: /tmp/snake-busters-smoke.png
+          retention-days: 7
 
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3
