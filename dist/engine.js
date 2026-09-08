@@ -23,8 +23,9 @@ export const BUSTERS = {
     name: 'Volt',
     role: 'Conductor',
     basic: {
-      id: 'arc-blaster', name: 'Arc Blaster',
-      damage: 24, interval: .16, ammoMax: 3, ammoReload: .52, chain: 1, push: 42,
+      id: 'tesla-trident', name: 'Tridente Tesla',
+      damage: 11, interval: .2, ammoMax: 3, ammoReload: .66, chain: 1, push: 38,
+      projectiles: 3, spread: .105, chainScale: .24, ultimateGain: .3,
     },
     ability: {
       id: 'overload', name: 'Sobrecarga',
@@ -32,7 +33,7 @@ export const BUSTERS = {
     },
     ultimate: {
       id: 'storm-core', name: 'Tormenta de núcleo',
-      chargeMax: 100, damage: 68, targets: 12, gainMultiplier: 1,
+      chargeMax: 120, damage: 42, targets: 8,
     },
   },
 };
@@ -108,9 +109,9 @@ export function getEncounterConfig(s) {
 }
 
 export const UPGRADES = [
-  { id: 'chain', name: 'Arco doble', icon: '↯', text: 'El básico salta a un vecino adicional.', apply: s => s.buster.basic.chain++ },
-  { id: 'power', name: 'Alto voltaje', icon: '+', text: '+30 % de daño del ataque básico y sus arcos.', apply: s => s.buster.basic.damage *= 1.3 },
-  { id: 'rapid', name: 'Gatillo iónico', icon: '»', text: 'La munición recarga un 22 % más rápido y el básico encadena tiros un 15 % más rápido.', apply: s => { s.buster.basic.ammoReload /= 1.22; s.buster.basic.interval /= 1.15; } },
+  { id: 'chain', name: 'Arco doble', icon: '↯', text: 'Cada rayo del Tridente salta a un vecino adicional.', apply: s => s.buster.basic.chain++ },
+  { id: 'power', name: 'Alto voltaje', icon: '+', text: '+25 % de daño a los tres rayos del básico.', apply: s => s.buster.basic.damage *= 1.25 },
+  { id: 'rapid', name: 'Bobina rápida', icon: '»', text: 'La munición recarga un 20 % más rápido y el Tridente dispara un 12 % más rápido.', apply: s => { s.buster.basic.ammoReload /= 1.2; s.buster.basic.interval /= 1.12; } },
   { id: 'blast', name: 'Ruptura reactiva', icon: '✳', text: 'Cada rotura inflige 16 de daño a sus vecinos.', apply: s => s.build.blast += 16 },
   { id: 'pulse', name: 'Condensador', icon: '↻', text: 'La habilidad recarga un 25 % más rápido y golpea a dos objetivos más.', apply: s => { s.buster.ability.cooldown *= .75; s.buster.ability.targets += 2; } },
   { id: 'force', name: 'Onda de choque', icon: '≋', text: 'Las roturas empujan un 60 % más y la habilidad hace +25 % de daño.', apply: s => { s.buster.basic.push *= 1.6; s.buster.ability.damage *= 1.25; } },
@@ -263,19 +264,23 @@ function finishSector(s) {
 
 function gainUltimate(s, amount) {
   const max = s.buster.ultimate.chargeMax;
-  s.ultimateCharge = clamp(s.ultimateCharge + amount * s.buster.ultimate.gainMultiplier, 0, max);
+  s.ultimateCharge = clamp(s.ultimateCharge + amount, 0, max);
+}
+
+function isBasicSource(source) {
+  return source === 'basic' || source === 'basic-chain';
 }
 
 export function damage(s, id, amount, source = 'shot') {
   const index = s.segments.findIndex(seg => seg.id === id);
   if (index < 0) return;
   const seg = s.segments[index];
-  const directArmor = source === 'shot' ? .75 : 1;
+  const directArmor = source === 'basic' ? .75 : 1;
   const dealt = Math.min(seg.hp, amount * (seg.type === 'armor' ? directArmor : 1));
   seg.hp -= dealt;
   seg.flash = .09;
   s.score += Math.round(dealt);
-  if (source !== 'ultimate') gainUltimate(s, dealt * .12);
+  if (isBasicSource(source)) gainUltimate(s, dealt * s.buster.basic.ultimateGain);
   s.events.push({ type: 'hit', x: seg.x, y: seg.y, amount: dealt, source });
 
   if (seg.hp > .0001) return;
@@ -286,13 +291,13 @@ export function damage(s, id, amount, source = 'shot') {
   s.comboTimer = 1.65;
   s.maxCombo = Math.max(s.maxCombo, s.combo);
   s.score += 100 * Math.min(s.combo, 8);
-  if (source !== 'ultimate') gainUltimate(s, 4);
+  if (isBasicSource(source)) gainUltimate(s, 2);
   s.head = Math.max(s.segments.length * 39 + 30, s.head - Math.min(85, s.buster.basic.push));
   s.events.push({ type: 'break', x: seg.x, y: seg.y, kind: seg.type, combo: s.combo });
 
   const config = getEncounterConfig(s);
   const explosion = s.build.blast + (seg.type === 'volatile' ? 48 + s.run.sector * 6 + config.volatileBlast : 0);
-  if (explosion) neighbors.forEach(next => damage(s, next, explosion, source === 'ultimate' ? 'ultimate' : 'explosion'));
+  if (explosion) neighbors.forEach(next => damage(s, next, explosion, 'explosion'));
 }
 
 function nearestTarget(s) {
@@ -383,18 +388,25 @@ export function update(s, dt, input = {}) {
 
   if (input.fire && s.fireTimer <= 0 && s.ammo > 0) {
     const a = Math.atan2(s.aim.y - s.player.y, s.aim.x - s.player.x);
-    s.bullets.push({
-      x: s.player.x + Math.cos(a) * 28,
-      y: s.player.y + Math.sin(a) * 28,
-      vx: Math.cos(a) * 1000,
-      vy: Math.sin(a) * 1000,
-      life: 1.5,
-    });
+    const count = s.buster.basic.projectiles;
+    for (let i = 0; i < count; i++) {
+      const offset = (i - (count - 1) / 2) * s.buster.basic.spread;
+      const angle = a + offset;
+      s.bullets.push({
+        x: s.player.x + Math.cos(angle) * 28,
+        y: s.player.y + Math.sin(angle) * 28,
+        vx: Math.cos(angle) * 1000,
+        vy: Math.sin(angle) * 1000,
+        life: 1.5,
+        source: 'basic',
+        fork: i,
+      });
+    }
     s.ammo--;
     if (s.ammoTimer <= 0) s.ammoTimer = s.buster.basic.ammoReload;
     s.fireTimer = s.buster.basic.interval;
     s.shots++;
-    s.events.push({ type: 'shot', ammo: s.ammo });
+    s.events.push({ type: 'shot', ammo: s.ammo, projectiles: count });
   }
 
   const config = getEncounterConfig(s);
@@ -424,10 +436,10 @@ export function update(s, dt, input = {}) {
         .sort((a, c) => Math.abs(s.segments.indexOf(a) - idx) - Math.abs(s.segments.indexOf(c) - idx))
         .slice(0, s.buster.basic.chain);
 
-      damage(s, first.id, s.buster.basic.damage);
+      damage(s, first.id, s.buster.basic.damage, 'basic');
       for (const n of neighbors) {
         s.events.push({ type: 'arc', x: first.x, y: first.y, tx: n.x, ty: n.y });
-        damage(s, n.id, s.buster.basic.damage * .3, 'arc');
+        damage(s, n.id, s.buster.basic.damage * s.buster.basic.chainScale, 'basic-chain');
       }
     }
   }
