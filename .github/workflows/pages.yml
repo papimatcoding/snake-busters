@@ -27,6 +27,29 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      - name: Browser smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          BROWSER="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$BROWSER" ]; then
+            echo "No Chromium browser found on runner"
+            exit 1
+          fi
+          node server.mjs >/tmp/snake-busters-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null; then break; fi
+            sleep .2
+          done
+          "$BROWSER" --headless --no-sandbox --disable-gpu --virtual-time-budget=1800 --dump-dom "http://127.0.0.1:3000/?smoke=1" >/tmp/snake-busters-dom.html
+          grep -q 'data-smoke="playing"' /tmp/snake-busters-dom.html || {
+            echo "Browser did not reach playing state"
+            cat /tmp/snake-busters-dom.html
+            exit 1
+          }
+
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3
         with:
