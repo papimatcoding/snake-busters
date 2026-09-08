@@ -47,9 +47,21 @@ jobs:
           grep -q 'data-smoke="playing"' /tmp/snake-busters-dom.html || {
             echo "Browser smoke failed at 771x493"
             grep -o 'data-smoke[^>]*' /tmp/snake-busters-dom.html || true
+            grep -o 'data-runtime-error="[^"]*"' /tmp/snake-busters-dom.html || true
             cat /tmp/snake-busters-dom.html
             exit 1
           }
+          grep -q 'data-smoke-runtime="clean"' /tmp/snake-busters-dom.html || {
+            echo "Runtime error detected during gameplay smoke"
+            grep -o 'data-smoke[^>]*' /tmp/snake-busters-dom.html || true
+            grep -o 'data-runtime-error="[^"]*"' /tmp/snake-busters-dom.html || true
+            exit 1
+          }
+          if grep -q 'data-runtime-error=' /tmp/snake-busters-dom.html; then
+            echo "Browser emitted a runtime error"
+            grep -o 'data-runtime-error="[^"]*"' /tmp/snake-busters-dom.html || true
+            exit 1
+          fi
           echo "Smoke metrics:"
           grep -o 'data-smoke[^>]*' /tmp/snake-busters-dom.html || true
 
