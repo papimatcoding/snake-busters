@@ -2,16 +2,20 @@
 
 Prototipo arcade de supervivencia: controla un Buster, dispara a una serpiente segmentada y evita que llegue al núcleo. Destruir segmentos provoca retroceso; las explosiones y los arcos permiten encadenar roturas. Las mejoras se eligen dentro de cada partida.
 
-## Estado actual — 0.1.0 · 8 septiembre 2026
+## Estado actual — 0.2.0 · 8 septiembre 2026
 
-**Primera versión jugable.** El objetivo es validar el control, el impacto de las roturas y las combinaciones de mejoras antes de desarrollar el competitivo.
+**Segunda iteración jugable.** El objetivo sigue siendo validar el núcleo, pero el combate ya incorpora gestión de munición y una primera pasada fuerte de legibilidad/identidad visual antes de ampliar el roster.
 
-- **Volt:** movimiento libre dentro de la zona inferior, disparos dirigidos y un arco pasivo al vecino más próximo en la cadena.
+- **Volt:** movimiento libre dentro de la zona inferior, disparos dirigidos y un arco pasivo al vecino más próximo en la cadena. Su silueta in-game ya se lee como un personaje/Buster en vez de una torreta geométrica.
+- **Munición:** Volt dispone de **3 cargas**, al estilo de un blaster por slots. Cada disparo gasta una carga y las cargas se recuperan secuencialmente (0,52 s base). Mantener clic permite burst hasta vaciar el cargador, pero ya no existe fuego infinito.
 - **Sobrecarga:** apunta con la mira y pulsa Espacio; golpea al segmento más cercano a la mira y a sus vecinos. Recarga base: 9 segundos. Ignora la reducción de daño directo del blindaje.
 - **Tres segmentos:** estándar, blindado (más vida y 25 % de reducción de disparos directos) y explosivo (daña a sus vecinos al romperse).
 - **Cinco oleadas**, 90 segmentos en total, con vida, longitud y velocidad crecientes.
-- **Seis mejoras**, tres opciones entre oleadas, cuatro elecciones por partida. Se acumulan cuando reaparecen y se reinician al comenzar otra partida.
+- **Seis mejoras**, tres opciones entre oleadas, cuatro elecciones por partida. Se acumulan cuando reaparecen y se reinician al comenzar otra partida. `Gatillo iónico` ahora acelera la recarga de munición y ligeramente la cadencia.
 - Roturas con retroceso, partículas, sonido sintetizado opcional y multiplicador de puntos hasta ×8 al romper en menos de 1,65 segundos.
+- **Feedback de combate:** el HUD muestra munición, progreso de recarga y daño actual; los impactos enseñan daño flotante y los segmentos muestran barra de vida con HP numérico al recibir daño, ser apuntados o ser la cabeza.
+- **Legibilidad del núcleo:** el HUD diferencia SEGURO / ALERTA / PELIGRO según el margen restante y el núcleo reacciona visualmente cuando la serpiente se acerca.
+- **Layout de escritorio:** la arena se adapta a la altura disponible para que HUD, arena y loadout quepan dentro del viewport en resoluciones normales, en lugar de obligar a perder interfaz por debajo de la pantalla.
 - Pausa manual y automática al cambiar de pestaña o perder el foco, derrota, victoria y reinicio completo.
 - Controles táctiles básicos: mantener el dedo para apuntar/disparar, botones de movimiento y Sobrecarga.
 - Récord **local al navegador**, con clave versionada; no es un ranking online.
@@ -55,9 +59,9 @@ node --test tests/engine.test.mjs
 npm run check
 ```
 
-Las pruebas cubren continuidad del recorrido, colisiones rápidas, explosiones recursivas sin bajas duplicadas, derrota por inacción, pausa, blindaje, recarga, selección de mejoras, reinicio y victoria con tres combinaciones de mejoras. La simulación usa pasos fijos de 1/120 s; los proyectiles usan colisión barrida para no atravesar segmentos entre pasos.
+Las pruebas cubren continuidad del recorrido, colisiones rápidas, explosiones recursivas sin bajas duplicadas, derrota por inacción, pausa, blindaje, **las tres cargas y su recarga**, selección de mejoras, reinicio y victoria con tres combinaciones de mejoras. La simulación usa pasos fijos de 1/120 s; los proyectiles usan colisión barrida para no atravesar segmentos entre pasos.
 
-Las tres estrategias automatizadas completan el circuito en aproximadamente 67–77 segundos de combate. Son puntería automatizada: **no demuestran que el equilibrio sea correcto para jugadores reales**. La duración y dificultad requieren pruebas de Mateo. Esta entrega tiene comprobación estática y de lógica; aún no tiene una revisión visual o una prueba manual de navegador documentada.
+Tras el rebalance de munición, las tres estrategias automatizadas completan el circuito en aproximadamente **102–109 segundos** de combate. Son puntería automatizada: **no demuestran que el equilibrio sea correcto para jugadores reales**. La duración y dificultad requieren pruebas de Mateo. Esta entrega tiene comprobación estática y de lógica; aún no tiene una revisión visual o una prueba manual de navegador documentada.
 
 ## Decisiones de diseño
 
@@ -70,11 +74,11 @@ Las tres estrategias automatizadas completan el circuito en aproximadamente 67�
 
 ## Próximo paso al retomar
 
-Pedir a Mateo feedback de una partida: **¿se siente bien disparar?, ¿se entiende la Sobrecarga?, ¿romper empuja lo suficiente?, ¿dónde se vuelve fácil o injusto?** Ajustar estos aspectos antes de ampliar el contenido.
+Pedir a Mateo feedback de una partida de la **0.2**: **¿las 3 cargas obligan a pensar sin cortar demasiado el ritmo?, ¿Volt ya se siente como un personaje?, ¿los HP/daños se leen bien?, ¿cabe todo correctamente en su pantalla?, ¿dónde se vuelve fácil o injusto?** Ajustar estos aspectos antes de ampliar el contenido.
 
 Pendiente:
 
-- Probar en navegador real de escritorio y móvil; ajustar legibilidad y controles táctiles (la arena mantiene proporciones horizontales).
+- Probar la 0.2 en navegador real de escritorio y móvil; ajustar tamaño del HUD, sensación de recarga y controles táctiles.
 - Afinar duración, dificultad, retroceso y combinaciones tras jugar.
 - Añadir Breach y Fang cuando Volt funcione como referencia.
 - Evaluar desafíos comparables y después duelos paralelos. El competitivo requerirá servidor autoritativo, validación de puntuaciones, resolución de empates, reglas comunes y protección frente a manipulación; no confiar en el cliente ni en `localStorage`.
