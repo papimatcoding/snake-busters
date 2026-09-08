@@ -18,7 +18,7 @@ try {
 
 const I18N = {
   es: {
-    'title.kicker':'EQUIPO DE CONTENCIÓN // VERSIÓN 0.6','title.line1':'ELLAS MUTAN.','title.line2':'NOSOTROS MÁS.','title.sub':'Entra en zonas infestadas, crea una combinación distinta en cada expedición y llega más lejos con tu escuadrón.','title.enter':'ENTRAR A LA BASE','title.local':'PROTOTIPO · TODO EL PROGRESO ACTUAL ES LOCAL','title.unit':'UNIDAD DE RESPUESTA','title.scan':'ESCÁNER DE AMENAZA','title.target':'OBJETIVO','title.state':'ESTADO','title.mutating':'MUTANDO',
+    'title.kicker':'EQUIPO DE CONTENCIÓN // VERSIÓN 0.6','title.line1':'ELLAS MUTAN.','title.line2':'NOSOTROS MÁS.','title.sub':'Entra en zonas infestadas, crea una combinación distinta en cada expedición y llega más lejos con tu escuadrón.','title.enter':'ENTRAR A LA BASE','title.local':'PROTOTIPO · TODO EL PROGRESO ACTUAL ES LOCAL','title.unit':'UNIDAD DE RESPUESTA','title.scan':'REGISTRO DE AMENAZA','title.target':'OBJETIVO','title.state':'ESTADO','title.mutating':'MUTANDO','title.classified':'SEÑAL BIOLÓGICA INESTABLE','title.noVisual':'VISUAL BLOQUEADO · DATOS DE CAMPO INCOMPLETOS',
     'profile.rank':'NIVEL 1 · RECLUTA','nav.busters':'BUSTERS','nav.custom':'PERSONALIZAR','nav.cosmetics':'COSMÉTICOS','nav.shop':'TIENDA','nav.social':'SOCIAL','nav.party':'ESCUADRÓN','common.soon':'PRÓXIMAMENTE','common.play':'JUGAR','common.baseBack':'← BASE','common.start':'INICIO','common.locked':'BLOQUEADO',
     'hq.response1':'CONTROL DE','hq.response2':'BROTES','hq.active':'BROTE ACTIVO','hq.best':'MEJOR SECTOR','hq.threat':'AMENAZA','hq.low':'BAJA','hq.outbreak':'BROTE 01','hq.artPending':'ARTE DE PERSONAJE PENDIENTE','hq.selected':'BUSTER SELECCIONADO','hq.quote':'“Si brilla, conduce. Si conduce, revienta.”',
     'party.squad':'ESCUADRÓN','party.invite':'+ INVITAR','party.you':'TÚ','party.ready':'LISTO','party.target':'OBJETIVO COOPERATIVO','party.note':'La versión actual sigue siendo jugable en solitario. El escuadrón real se conectará sobre esta estructura.','party.mate':'COMPAÑERO','party.inviteShort':'INVITAR',
@@ -33,7 +33,7 @@ const I18N = {
     'toast.busters':'Volt es el Buster de referencia. El diseño final de personajes llegará después de cerrar los sistemas.','toast.locker':'Personalización preparada para aspectos, efectos, banners y gestos.','toast.shop':'La tienda todavía no tiene economía ni compras.','toast.social':'El escuadrón de 3 está preparado visualmente. El multijugador real vendrá después.'
   },
   en: {
-    'title.kicker':'CONTAINMENT CREW // BUILD 0.6','title.line1':'THEY MUTATE.','title.line2':'WE HIT HARDER.','title.sub':'Enter infested zones, build a different loadout every expedition and push farther with your squad.','title.enter':'ENTER HQ','title.local':'PROTOTYPE · CURRENT PROGRESS IS LOCAL ONLY','title.unit':'RESPONSE UNIT','title.scan':'THREAT SCANNER','title.target':'TARGET','title.state':'STATUS','title.mutating':'MUTATING',
+    'title.kicker':'CONTAINMENT CREW // BUILD 0.6','title.line1':'THEY MUTATE.','title.line2':'WE HIT HARDER.','title.sub':'Enter infested zones, build a different loadout every expedition and push farther with your squad.','title.enter':'ENTER HQ','title.local':'PROTOTYPE · CURRENT PROGRESS IS LOCAL ONLY','title.unit':'RESPONSE UNIT','title.scan':'THREAT LOG','title.target':'TARGET','title.state':'STATUS','title.mutating':'MUTATING','title.classified':'UNSTABLE BIOLOGICAL SIGNAL','title.noVisual':'VISUAL LOCKED · FIELD DATA INCOMPLETE',
     'profile.rank':'LEVEL 1 · RECRUIT','nav.busters':'BUSTERS','nav.custom':'CUSTOMIZE','nav.cosmetics':'COSMETICS','nav.shop':'SHOP','nav.social':'SOCIAL','nav.party':'SQUAD','common.soon':'COMING SOON','common.play':'PLAY','common.baseBack':'← HQ','common.start':'START','common.locked':'LOCKED',
     'hq.response1':'OUTBREAK','hq.response2':'CONTROL','hq.active':'ACTIVE OUTBREAK','hq.best':'BEST SECTOR','hq.threat':'THREAT','hq.low':'LOW','hq.outbreak':'OUTBREAK 01','hq.artPending':'CHARACTER ART PENDING','hq.selected':'SELECTED BUSTER','hq.quote':'“If it glows, it conducts. If it conducts, it blows.”',
     'party.squad':'SQUAD','party.invite':'+ INVITE','party.you':'YOU','party.ready':'READY','party.target':'CO-OP TARGET','party.note':'The current build is still playable solo. Real squad play will plug into this structure later.','party.mate':'TEAMMATE','party.inviteShort':'INVITE',
@@ -538,6 +538,17 @@ $('ultimate').onclick = () => { state.aim = { ...pointer }; activateUltimate(sta
 $('sound').onclick = () => { sound = !sound; $('sound').textContent = t(sound ? 'sound.on' : 'sound.off'); $('sound').setAttribute('aria-pressed', String(sound)); if (sound) tone(550, .1); };
 $('help').onclick = () => { if (state.phase === 'playing' || state.phase === 'paused') pause(true); else announce(language === 'es' ? 'WASD · CLIC · E HABILIDAD · Q DEFINITIVA' : 'WASD · CLICK · E ABILITY · Q ULTIMATE'); };
 applyLanguage();
+
+const smokeMode = new URLSearchParams(location.search).has('smoke');
+if (smokeMode) {
+  try {
+    deploy();
+    document.body.dataset.smoke = state.phase;
+  } catch (error) {
+    document.body.dataset.smoke = 'error';
+    document.body.dataset.smokeError = String(error?.message || error);
+  }
+}
 function frame(now) {
   const dt = Math.min(.05, (now - (last || now)) / 1000); last = now;
   if (state.phase === 'playing') {
@@ -551,6 +562,7 @@ function frame(now) {
     while (accumulator >= STEP) { update(state, STEP, input); accumulator -= STEP; if (state.phase !== 'playing') { accumulator = 0; break; } }
   } else accumulator = 0;
   events(); syncUI(); render(now / 1000, state.phase === 'paused' ? 0 : dt);
+  if (smokeMode) document.body.dataset.smoke = state.phase;
   if (announcementTime > 0) { announcementTime -= dt; if (announcementTime <= 0) $('announce').classList.remove('show'); }
   if (lobbyToastTime > 0) { lobbyToastTime -= dt; if (lobbyToastTime <= 0) $('lobby-toast')?.classList.remove('show'); }
   requestAnimationFrame(frame);
