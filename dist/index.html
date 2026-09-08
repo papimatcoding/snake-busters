@@ -153,40 +153,39 @@
           <div class="top-actions"><button class="lang-toggle" data-lang-toggle type="button">EN</button><button id="sound" class="quiet" aria-pressed="false">Sonido: no</button><button id="pause" class="quiet" disabled>Pausa <kbd>P</kbd></button></div>
         </header>
 
+        <section class="game-statusbar game-hud" aria-label="Estado de la expedición">
+          <div class="sector-hud"><span>SECTOR</span><strong id="wave">01 <small>/ 05</small></strong></div>
+          <div class="core-hud">
+            <div><span data-i18n="arena.core">NÚCLEO</span><strong id="core-status">SEGURO</strong></div>
+            <progress id="danger" value="75" max="100" aria-label="Margen restante antes de que la serpiente alcance el núcleo"></progress>
+            <small id="distance">—</small>
+          </div>
+          <div class="mutation-hud objective-hud"><span id="objective-label">GREENFANG</span><strong id="objective-value">SIN MUTACIONES</strong></div>
+        </section>
+
         <section class="arena game-arena" aria-label="Campo de juego">
           <canvas id="game" width="1200" height="740" tabindex="0" aria-label="Juego Snake Busters. Mueve a Volt con WASD o flechas, dispara con clic, usa la habilidad con E y la ultimate con Q."></canvas>
-
-          <div class="game-hud" aria-label="Estado de la expedición">
-            <div class="sector-hud"><span>SECTOR</span><strong id="wave">01 <small>/ 05</small></strong></div>
-            <div class="core-hud">
-              <div><span data-i18n="arena.core">NÚCLEO</span><strong id="core-status">SEGURO</strong></div>
-              <progress id="danger" value="75" max="100" aria-label="Margen restante antes de que la serpiente alcance el núcleo"></progress>
-              <small id="distance">—</small>
-            </div>
-            <div class="mutation-hud objective-hud"><span id="objective-label">GREENFANG</span><strong id="objective-value">SIN MUTACIONES</strong></div>
-          </div>
-
           <div id="announce" class="announce" aria-live="polite"></div>
           <div id="overlay" class="overlay" hidden><div class="panel" id="panel"></div></div>
+        </section>
 
-          <section class="combat-bar combat-dock" aria-label="Controles de combate">
-            <div class="basic-slot">
-              <span class="slot-key" data-i18n="combat.basic">TRIDENTE TESLA</span>
-              <div id="ammo" class="ammo" aria-label="3 de 3 cargas disponibles"><i></i><i></i><i></i></div>
-              <small id="ammo-text">3 / 3</small>
-            </div>
-            <button id="ability" class="combat-skill" disabled>
-              <span class="skill-key">E</span>
-              <div><small data-i18n="combat.ability">HABILIDAD</small><strong data-i18n="combat.overload">SOBRECARGA</strong><span id="cooldown">LISTA</span></div>
-              <i class="skill-meter" id="ability-meter"></i>
-            </button>
-            <button id="ultimate" class="combat-skill ultimate-skill" disabled>
-              <span class="skill-key">Q</span>
-              <div><small data-i18n="combat.ultimate">DEFINITIVA</small><strong data-i18n="combat.storm">TORMENTA</strong><span id="ultimate-status">0 %</span></div>
-              <i class="skill-meter" id="ultimate-meter"></i>
-            </button>
-            <button id="help" class="combat-help" aria-label="Controles y reglas">?</button>
-          </section>
+        <section class="combat-bar game-kitbar" aria-label="Controles de combate">
+          <div class="basic-slot">
+            <span class="slot-key" data-i18n="combat.basic">TRIDENTE TESLA</span>
+            <div id="ammo" class="ammo" aria-label="3 de 3 cargas disponibles"><i></i><i></i><i></i></div>
+            <small id="ammo-text">3 / 3</small>
+          </div>
+          <button id="ability" class="combat-skill" disabled>
+            <span class="skill-key">E</span>
+            <div><small data-i18n="combat.ability">HABILIDAD</small><strong data-i18n="combat.overload">SOBRECARGA</strong><span id="cooldown">LISTA</span></div>
+            <i class="skill-meter" id="ability-meter"></i>
+          </button>
+          <button id="ultimate" class="combat-skill ultimate-skill" disabled>
+            <span class="skill-key">Q</span>
+            <div><small data-i18n="combat.ultimate">DEFINITIVA</small><strong data-i18n="combat.storm">TORMENTA</strong><span id="ultimate-status">0 %</span></div>
+            <i class="skill-meter" id="ultimate-meter"></i>
+          </button>
+          <button id="help" class="combat-help" aria-label="Controles y reglas">?</button>
         </section>
 
         <div class="mobile-controls" aria-label="Movimiento táctil"><button data-move="left" aria-label="Mover izquierda">←</button><button data-move="up" aria-label="Mover arriba">↑</button><button data-move="down" aria-label="Mover abajo">↓</button><button data-move="right" aria-label="Mover derecha">→</button></div>
