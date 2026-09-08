@@ -1,11 +1,15 @@
 # Snake Busters
 
-Prototipo arcade de supervivencia: controla un Buster, dispara a una serpiente segmentada y evita que llegue al núcleo. Destruir segmentos provoca retroceso; las explosiones y los arcos permiten encadenar roturas. Las mejoras se eligen dentro de cada partida.
+Prototipo de action-roguelite cooperativo: forma un equipo de Snake Busters, entra en zonas infestadas y persigue serpientes mutantes sector a sector. El combate actual sigue siendo individual, pero la estructura de producto ya está preparada alrededor de expediciones, progresión de mundo y squads de hasta tres jugadores.
 
-## Estado actual — 0.2.0 · 8 septiembre 2026
+## Estado actual — 0.3.0 · 8 septiembre 2026
 
-**Segunda iteración jugable.** El objetivo sigue siendo validar el núcleo, pero el combate ya incorpora gestión de munición y una primera pasada fuerte de legibilidad/identidad visual antes de ampliar el roster.
+**Primera iteración de producto.** Snake Busters deja de abrir directamente en el combate: ahora existe un flujo completo **inicio → HQ/lobby → mapa de outbreak → expedición**. La meta es construir desde aquí la identidad, progresión y futura experiencia cooperativa sin saturar la pantalla de juego.
 
+- **Inicio:** splash independiente con identidad de marca, Greenfang y Volt como protagonistas; el combate ya no hace de menú principal.
+- **HQ / lobby:** Volt aparece como personaje central en una base de contención. Existen espacios definidos para Busters, Locker, tienda y Social, además de una party visual de **1/3**.
+- **Outbreak Map:** primer mundo, **Toxic Sewers**, con Greenfang como serpiente objetivo y una ruta visual de cinco sectores. En la 0.3 la run actual representa esos cinco sectores.
+- **Progresión local inicial:** se guarda la mayor profundidad alcanzada en Toxic Sewers y se refleja en el lobby. Es sólo una semilla de progresión; todavía no hay economía ni power progression persistente.
 - **Volt:** movimiento libre dentro de la zona inferior, disparos dirigidos y un arco pasivo al vecino más próximo en la cadena. Su silueta in-game ya se lee como un personaje/Buster en vez de una torreta geométrica.
 - **Munición:** Volt dispone de **3 cargas**, al estilo de un blaster por slots. Cada disparo gasta una carga y las cargas se recuperan secuencialmente (0,52 s base). Mantener clic permite burst hasta vaciar el cargador, pero ya no existe fuego infinito.
 - **Sobrecarga:** apunta con la mira y pulsa Espacio; golpea al segmento más cercano a la mira y a sus vecinos. Recarga base: 9 segundos. Ignora la reducción de daño directo del blindaje.
@@ -74,14 +78,15 @@ Tras el rebalance de munición, las tres estrategias automatizadas completan el 
 
 ## Próximo paso al retomar
 
-Pedir a Mateo feedback de una partida de la **0.2**: **¿las 3 cargas obligan a pensar sin cortar demasiado el ritmo?, ¿Volt ya se siente como un personaje?, ¿los HP/daños se leen bien?, ¿cabe todo correctamente en su pantalla?, ¿dónde se vuelve fácil o injusto?** Ajustar estos aspectos antes de ampliar el contenido.
+Pedir a Mateo feedback del **flujo 0.3 completo**: **¿el inicio vende el juego?, ¿el HQ tiene la personalidad correcta?, ¿se entiende Toxic Sewers y la idea de progresar por sectores?, ¿qué sobra o falta en el lobby?, ¿la partida queda suficientemente limpia al estar separada del metajuego?** A partir de ahí decidir si la 0.4 debe priorizar contenido del primer outbreak, un segundo Buster o el primer prototipo cooperativo.
 
 Pendiente:
 
-- Probar la 0.2 en navegador real de escritorio y móvil; ajustar tamaño del HUD, sensación de recarga y controles táctiles.
+- Probar la 0.3 completa en escritorio y móvil, especialmente ajuste del HQ y del mapa a distintas relaciones de aspecto.
 - Afinar duración, dificultad, retroceso y combinaciones tras jugar.
 - Añadir Breach y Fang cuando Volt funcione como referencia.
-- Evaluar desafíos comparables y después duelos paralelos. El competitivo requerirá servidor autoritativo, validación de puntuaciones, resolución de empates, reglas comunes y protección frente a manipulación; no confiar en el cliente ni en `localStorage`.
+- Diseñar el cooperativo real de 1–3 jugadores: sincronización, escalado que cambie situaciones (no sólo HP), party y servidor autoritativo. Ranked puede existir después, pero ya no es el eje principal del producto.
+- Convertir Greenfang en una criatura persistente que mute entre sectores, añadir bifurcaciones/eventos y crear el primer boss real del outbreak.
 - Arte definitivo, más recorridos y tipos de segmento después de validar el núcleo.
 
 **Mantener este README actualizado en cada cambio funcional**, con lo completado, cómo probarlo y el siguiente paso. Conservar la separación entre simulación y presentación para poder añadir nuevos Busters y un servidor más adelante.
