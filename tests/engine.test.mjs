@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createGame, startGame, update, damage, activateAbility, activateUltimate,
-  chooseUpgrade, placeSegments, pathAt, PATH_LENGTH, segmentCircleHit, STEP,
+  chooseUpgrade, spawnSector, placeSegments, pathAt, PATH_LENGTH, segmentCircleHit, STEP,
   getEncounterConfig, MUTATIONS,
 } from '../dist/engine.js';
 
@@ -185,6 +185,47 @@ test('encounter history records the evolving expedition state', () => {
   assert.equal(s.run.encounterHistory.length, 2);
   assert.equal(s.run.encounterHistory[1].sector, 2);
   assert.deepEqual(s.run.encounterHistory[1].mutations, ['plated-scales']);
+});
+
+test('Toxic Sewers sectors have distinct runtime rules', () => {
+  const pressure = createGame();
+  pressure.run.sector = 2;
+  spawnSector(pressure);
+  startGame(pressure);
+  const armorBefore = pressure.segments.filter(n => n.type === 'armor').length;
+  for (let i = 0; i < 120 * 8.2 && pressure.phase === 'playing'; i++) update(pressure, STEP);
+  assert.ok(pressure.segments.filter(n => n.type === 'armor').length > armorBefore);
+  assert.ok(pressure.events.some(e => e.type === 'reinforce'));
+
+  const split = createGame();
+  split.run.sector = 3;
+  spawnSector(split);
+  startGame(split);
+  split.segments = split.segments.slice(0, Math.ceil(split.encounterState.initialSegments * .6));
+  placeSegments(split);
+  const splitBefore = split.segments.length;
+  update(split, STEP);
+  assert.equal(split.encounterState.splitTriggered, true);
+  assert.equal(split.segments.length, splitBefore + 4);
+  assert.ok(split.events.some(e => e.type === 'split'));
+
+  const sump = createGame();
+  sump.run.sector = 4;
+  spawnSector(sump);
+  startGame(sump);
+  for (let i = 0; i < 120 * 7.2 && sump.phase === 'playing'; i++) update(sump, STEP);
+  assert.ok(sump.encounterState.sludgeActive > 0);
+  assert.ok(sump.events.some(e => e.type === 'sludge'));
+
+  const alpha = createGame();
+  alpha.run.sector = 5;
+  spawnSector(alpha);
+  startGame(alpha);
+  alpha.segments = alpha.segments.slice(0, Math.floor(alpha.encounterState.initialSegments * .6));
+  placeSegments(alpha);
+  update(alpha, STEP);
+  assert.equal(alpha.encounterState.alphaPhase, 1);
+  assert.ok(alpha.events.some(e => e.type === 'alpha-phase' && e.phase === 1));
 });
 
 test('a repeatable aiming strategy can finish all five sectors with each offer column', () => {
