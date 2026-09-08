@@ -669,13 +669,20 @@ function frame(now) {
       document.querySelector('.game-kitbar').getBoundingClientRect(),
     ];
     const separated = rows.every((r, i) => i === rows.length - 1 || r.bottom <= rows[i + 1].top + .5);
+    const horizontalRows = ['.game-topbar', '.game-statusbar', '.game-kitbar'].map(selector => {
+      const children = [...document.querySelector(selector).children].filter(el => getComputedStyle(el).display !== 'none');
+      const rects = children.map(el => el.getBoundingClientRect());
+      return rects.every((r, i) => i === rects.length - 1 || r.right <= rects[i + 1].left + .5);
+    });
+    const horizontalClean = horizontalRows.every(Boolean);
     const inViewport = rows.every(r => r.top >= -1 && r.bottom <= innerHeight + 1 && r.left >= -1 && r.right <= innerWidth + 1);
     const clean = !runtimeError;
-    document.body.dataset.smoke = state.phase === 'playing' && visible && interactive && separated && inViewport && clean && state.segments.length > 0 ? 'playing' : 'layout-error';
+    document.body.dataset.smoke = state.phase === 'playing' && visible && interactive && separated && horizontalClean && inViewport && clean && state.segments.length > 0 ? 'playing' : 'layout-error';
     document.body.dataset.smokeCanvas = `${Math.round(rect.width)}x${Math.round(rect.height)}`;
     document.body.dataset.smokeSegments = String(state.segments.length);
     document.body.dataset.smokeInteractive = interactive ? 'yes' : 'no';
     document.body.dataset.smokeSeparated = separated ? 'yes' : 'no';
+    document.body.dataset.smokeHorizontal = horizontalClean ? 'yes' : 'no';
     document.body.dataset.smokeViewport = inViewport ? 'yes' : 'no';
     document.body.dataset.smokeRuntime = clean ? 'clean' : runtimeError;
   }
