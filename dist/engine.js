@@ -286,13 +286,13 @@ export function damage(s, id, amount, source = 'shot') {
   s.comboTimer = 1.65;
   s.maxCombo = Math.max(s.maxCombo, s.combo);
   s.score += 100 * Math.min(s.combo, 8);
-  gainUltimate(s, 4);
+  if (source !== 'ultimate') gainUltimate(s, 4);
   s.head = Math.max(s.segments.length * 39 + 30, s.head - Math.min(85, s.buster.basic.push));
   s.events.push({ type: 'break', x: seg.x, y: seg.y, kind: seg.type, combo: s.combo });
 
   const config = getEncounterConfig(s);
   const explosion = s.build.blast + (seg.type === 'volatile' ? 48 + s.run.sector * 6 + config.volatileBlast : 0);
-  if (explosion) neighbors.forEach(next => damage(s, next, explosion, 'explosion'));
+  if (explosion) neighbors.forEach(next => damage(s, next, explosion, source === 'ultimate' ? 'ultimate' : 'explosion'));
 }
 
 function nearestTarget(s) {
