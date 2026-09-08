@@ -10,6 +10,15 @@ let state = createGame(), last = 0, accumulator = 0, shown = 'ready', best = 0, 
 let particles = [], arcs = [], labels = [], rings = [], shake = 0, announcementTime = 0, lobbyToastTime = 0;
 let pointer = { x: 600, y: 330 }, shooting = false, keys = new Set(), touchMoves = new Map();
 let sound = false, audioContext, language = 'es';
+let runtimeError = '';
+window.addEventListener('error', event => {
+  runtimeError = String(event.error?.message || event.message || 'runtime error');
+  document.body.dataset.runtimeError = runtimeError;
+});
+window.addEventListener('unhandledrejection', event => {
+  runtimeError = String(event.reason?.message || event.reason || 'unhandled rejection');
+  document.body.dataset.runtimeError = runtimeError;
+});
 try {
   best = Number(localStorage.getItem('snake-busters:best:v1')) || 0;
   bestSector = Number(localStorage.getItem('snake-busters:toxic-sewers:best-sector:v1')) || 0;
@@ -544,7 +553,8 @@ function toWorld(e) {
 canvas.addEventListener('pointermove', e => { pointer = toWorld(e); });
 canvas.addEventListener('pointerdown', e => {
   if (state.phase !== 'playing' || (e.pointerType === 'mouse' && e.button !== 0)) return;
-  e.preventDefault(); canvas.focus({ preventScroll: true }); pointer = toWorld(e); shooting = true; canvas.setPointerCapture(e.pointerId);
+  e.preventDefault(); canvas.focus({ preventScroll: true }); pointer = toWorld(e); shooting = true;
+  try { canvas.setPointerCapture(e.pointerId); } catch {}
 });
 canvas.addEventListener('pointerup', () => { shooting = false; });
 canvas.addEventListener('pointercancel', () => { shooting = false; });
@@ -589,10 +599,21 @@ const smokeMode = new URLSearchParams(location.search).has('smoke');
 let smokeStartX = 0;
 if (smokeMode) {
   try {
-    deploy();
+    $('title-enter').click();
+    $('lobby-play').click();
+    $('outbreak-deploy').click();
     smokeStartX = state.player.x;
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', bubbles: true }));
     $('ability').click();
+    const rect = canvas.getBoundingClientRect();
+    canvas.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true,
+      pointerId: 77,
+      pointerType: 'mouse',
+      button: 0,
+      clientX: rect.left + rect.width * .5,
+      clientY: rect.top + rect.height * .35,
+    }));
     document.body.dataset.smoke = state.phase;
   } catch (error) {
     document.body.dataset.smoke = 'error';
@@ -614,12 +635,24 @@ function frame(now) {
   events(); syncUI(); render(now / 1000, state.phase === 'paused' ? 0 : dt);
   if (smokeMode) {
     const rect = canvas.getBoundingClientRect();
-    const visible = rect.width >= 300 && rect.height >= 250 && getComputedStyle(canvas).visibility !== 'hidden' && getComputedStyle(canvas).display !== 'none';
-    const interactive = state.player.x > smokeStartX + .5 && state.abilityCooldown > 0;
-    document.body.dataset.smoke = state.phase === 'playing' && visible && interactive && state.segments.length > 0 ? 'playing' : 'layout-error';
+    const visible = rect.width >= 300 && rect.height >= 220 && getComputedStyle(canvas).visibility !== 'hidden' && getComputedStyle(canvas).display !== 'none';
+    const interactive = state.player.x > smokeStartX + .5 && state.abilityCooldown > 0 && state.shots > 0;
+    const rows = [
+      document.querySelector('.game-topbar').getBoundingClientRect(),
+      document.querySelector('.game-statusbar').getBoundingClientRect(),
+      document.querySelector('.game-arena').getBoundingClientRect(),
+      document.querySelector('.game-kitbar').getBoundingClientRect(),
+    ];
+    const separated = rows.every((r, i) => i === rows.length - 1 || r.bottom <= rows[i + 1].top + .5);
+    const inViewport = rows.every(r => r.top >= -1 && r.bottom <= innerHeight + 1 && r.left >= -1 && r.right <= innerWidth + 1);
+    const clean = !runtimeError;
+    document.body.dataset.smoke = state.phase === 'playing' && visible && interactive && separated && inViewport && clean && state.segments.length > 0 ? 'playing' : 'layout-error';
     document.body.dataset.smokeCanvas = `${Math.round(rect.width)}x${Math.round(rect.height)}`;
     document.body.dataset.smokeSegments = String(state.segments.length);
     document.body.dataset.smokeInteractive = interactive ? 'yes' : 'no';
+    document.body.dataset.smokeSeparated = separated ? 'yes' : 'no';
+    document.body.dataset.smokeViewport = inViewport ? 'yes' : 'no';
+    document.body.dataset.smokeRuntime = clean ? 'clean' : runtimeError;
   }
   if (announcementTime > 0) { announcementTime -= dt; if (announcementTime <= 0) $('announce').classList.remove('show'); }
   if (lobbyToastTime > 0) { lobbyToastTime -= dt; if (lobbyToastTime <= 0) $('lobby-toast')?.classList.remove('show'); }
