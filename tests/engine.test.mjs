@@ -216,7 +216,9 @@ test('sector 2 branches into a safe or infested route with persistent consequenc
   assert.ok(riskyConfig.hpMultiplier > 1);
   assert.equal(ROUTES['infested-nest'].salvage, 1);
 
+  assert.equal(risky.objectives.length, 3);
   risky.segments = [];
+  risky.objectives = [];
   update(risky, STEP);
   assert.equal(risky.run.salvage, 1);
   assert.ok(risky.events.some(e => e.type === 'route-reward'));
@@ -271,12 +273,13 @@ test('a repeatable aiming strategy can finish all five sectors with each offer c
     for (let tick = 0; tick < 120 * 300 && !['won', 'lost'].includes(s.phase); tick++) {
       if (s.phase === 'upgrade') chooseUpgrade(s, s.choices[column]);
       if (s.phase === 'route') chooseRoute(s, column === 1 ? 'infested-nest' : 'maintenance');
-      const target = s.segments.filter(n => n.d >= 0).sort((a, b) => b.y - a.y || a.hp - b.hp)[0];
+      const segmentTarget = s.segments.filter(n => n.d >= 0).sort((a, b) => b.y - a.y || a.hp - b.hp)[0];
+      const target = segmentTarget || s.objectives[0];
 
       if (target) {
         s.aim = { x: target.x, y: target.y };
-        if (s.abilityCooldown === 0) activateAbility(s);
-        if (s.ultimateCharge >= s.buster.ultimate.chargeMax) activateUltimate(s);
+        if (segmentTarget && s.abilityCooldown === 0) activateAbility(s);
+        if (segmentTarget && s.ultimateCharge >= s.buster.ultimate.chargeMax) activateUltimate(s);
         update(s, STEP, {
           aim: s.aim,
           fire: true,
