@@ -40,13 +40,28 @@ test('the ability respects cooldown and armor takes reduced direct damage', () =
   assert.equal(activateAbility(s), false); assert.deepEqual(s.segments.map(n => n.hp), after);
   assert.equal(s.cooldown, s.stats.cooldown);
 });
+test('Volt has three rechargeable ammo charges and cannot fire while empty', () => {
+  const s = createGame(); startGame(s);
+  assert.equal(s.ammo, 3); assert.equal(s.stats.ammoMax, 3);
+  for (let i = 0; i < 3; i++) {
+    s.fireTimer = 0;
+    update(s, STEP, { fire: true, aim: { x: 600, y: 250 } });
+  }
+  assert.equal(s.ammo, 0); assert.equal(s.shots, 3);
+  s.fireTimer = 0;
+  update(s, STEP, { fire: true, aim: { x: 600, y: 250 } });
+  assert.equal(s.shots, 3);
+  for (let i = 0; i < Math.ceil(s.stats.ammoReload / STEP) + 2; i++) update(s, STEP);
+  assert.equal(s.ammo, 1);
+});
+
 test('upgrade selection is restricted to offers; a new game resets all upgrades', () => {
   const s = createGame(); startGame(s);
   s.segments = []; update(s, STEP);
   assert.equal(s.phase, 'upgrade'); assert.equal(chooseUpgrade(s, 'rapid'), false);
   assert.equal(chooseUpgrade(s, 'power'), true); assert.equal(s.wave, 2);
-  assert.ok(s.stats.damage > 14); assert.equal(s.phase, 'playing');
-  const fresh = createGame(); assert.equal(fresh.stats.damage, 14); assert.deepEqual(fresh.upgrades, []);
+  assert.ok(s.stats.damage > 24); assert.equal(s.phase, 'playing');
+  const fresh = createGame(); assert.equal(fresh.stats.damage, 24); assert.deepEqual(fresh.upgrades, []);
 });
 test('a repeatable aiming strategy can finish all five waves with each offer column', () => {
   for (const column of [0, 1, 2]) {
