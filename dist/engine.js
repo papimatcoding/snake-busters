@@ -18,7 +18,7 @@ export function pathAt(d) {
 export const UPGRADES = [
   { id: 'chain', name: 'Arco doble', icon: '↯', text: 'Tus disparos saltan a un vecino adicional.', apply: s => s.stats.chain++ },
   { id: 'power', name: 'Alto voltaje', icon: '+', text: '+30 % de daño en tus disparos y sus arcos.', apply: s => s.stats.damage *= 1.3 },
-  { id: 'rapid', name: 'Gatillo iónico', icon: '»', text: 'Disparas un 25 % más rápido.', apply: s => s.stats.interval /= 1.25 },
+  { id: 'rapid', name: 'Gatillo iónico', icon: '»', text: 'La munición recarga un 22 % más rápido y encadenas tiros un 15 % más rápido.', apply: s => { s.stats.ammoReload /= 1.22; s.stats.interval /= 1.15; } },
   { id: 'blast', name: 'Ruptura reactiva', icon: '✳', text: 'Cada rotura inflige 16 de daño a sus vecinos.', apply: s => s.stats.blast += 16 },
   { id: 'pulse', name: 'Condensador', icon: '↻', text: 'Sobrecarga recarga un 25 % más rápido y golpea a dos objetivos más.', apply: s => { s.stats.cooldown *= .75; s.stats.targets += 2; } },
   { id: 'force', name: 'Onda de choque', icon: '≋', text: 'Las roturas empujan un 60 % más. Sobrecarga hace +25 % de daño.', apply: s => { s.stats.push *= 1.6; s.stats.pulseDamage *= 1.25; } },
@@ -28,12 +28,14 @@ export function createGame() {
     player: { x: 600, y: 660 }, aim: { x: 600, y: 330 },
     segments: [], bullets: [], events: [], upgrades: [], choices: [], kills: 0, shots: 0, hits: 0,
     combo: 0, maxCombo: 0, comboTimer: 0, fireTimer: 0, cooldown: 0, uid: 0,
-    stats: { damage: 14, interval: .16, chain: 1, blast: 0, push: 25, cooldown: 9, targets: 5, pulseDamage: 48 } };
+    ammo: 3, ammoTimer: 0,
+    stats: { damage: 14, interval: .16, ammoMax: 3, ammoReload: .82, chain: 1, blast: 0, push: 25, cooldown: 9, targets: 5, pulseDamage: 48 } };
   spawnWave(s); s.phase = 'ready'; return s;
 }
 export function spawnWave(s) {
   s.phase = 'playing'; s.waveTime = 0; s.head = 1250 + 100 * (s.wave - 1);
   s.bullets = []; s.cooldown = 0; s.fireTimer = 0; s.combo = 0; s.comboTimer = 0;
+  s.ammo = s.stats.ammoMax; s.ammoTimer = 0;
   s.player = { x: 600, y: 660 };
   s.segments = Array.from({ length: 12 + (s.wave - 1) * 3 }, (_, i) => {
     const type = i % 5 === 3 ? 'volatile' : i % 4 === 0 ? 'armor' : 'normal';
@@ -111,15 +113,26 @@ export function update(s, dt, input = {}) {
   if (s.phase !== 'playing') return;
   dt = clamp(dt, 0, .05); s.time += dt; s.waveTime += dt;
   s.cooldown = Math.max(0, s.cooldown - dt); s.fireTimer -= dt;
+  if (s.ammo < s.stats.ammoMax) {
+    s.ammoTimer -= dt;
+    while (s.ammoTimer <= 0 && s.ammo < s.stats.ammoMax) {
+      s.ammo++;
+      s.events.push({ type: 'reload', ammo: s.ammo });
+      s.ammoTimer += s.stats.ammoReload;
+    }
+    if (s.ammo >= s.stats.ammoMax) s.ammoTimer = 0;
+  }
   s.comboTimer = Math.max(0, s.comboTimer - dt); if (!s.comboTimer) s.combo = 0;
   const mx = input.x || 0, my = input.y || 0, len = Math.max(1, Math.hypot(mx, my));
   s.player.x = clamp(s.player.x + mx / len * 330 * dt, 45, 1155);
   s.player.y = clamp(s.player.y + my / len * 330 * dt, 605, 705);
   if (input.aim) s.aim = { ...input.aim };
-  if (input.fire && s.fireTimer <= 0) {
+  if (input.fire && s.fireTimer <= 0 && s.ammo > 0) {
     const a = Math.atan2(s.aim.y - s.player.y, s.aim.x - s.player.x);
-    s.bullets.push({ x: s.player.x + Math.cos(a) * 20, y: s.player.y + Math.sin(a) * 20, vx: Math.cos(a) * 1000, vy: Math.sin(a) * 1000, life: 1.5 });
-    s.fireTimer = s.stats.interval; s.shots++; s.events.push({ type: 'shot' });
+    s.bullets.push({ x: s.player.x + Math.cos(a) * 28, y: s.player.y + Math.sin(a) * 28, vx: Math.cos(a) * 1000, vy: Math.sin(a) * 1000, life: 1.5 });
+    s.ammo--;
+    if (s.ammoTimer <= 0) s.ammoTimer = s.stats.ammoReload;
+    s.fireTimer = s.stats.interval; s.shots++; s.events.push({ type: 'shot', ammo: s.ammo });
   }
   // Increasing speed is visible as pressure, and bounds the length of a failed run.
   s.head += (47 + s.wave * 8 + s.waveTime * .55) * dt;
