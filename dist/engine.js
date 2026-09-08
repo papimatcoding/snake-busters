@@ -17,6 +17,17 @@ export function pathAt(d) {
   return { x: 130 + d, y: 530, a: 0 };
 }
 
+export function pathAtLane(d, lane = 0, totalLanes = 1) {
+  const p = pathAt(d);
+  if (totalLanes <= 1) return p;
+  const offset = (lane - (totalLanes - 1) / 2) * 68;
+  return {
+    x: p.x - Math.sin(p.a) * offset,
+    y: p.y + Math.cos(p.a) * offset,
+    a: p.a,
+  };
+}
+
 export const BUSTERS = {
   volt: {
     id: 'volt',
@@ -69,8 +80,8 @@ export const OUTBREAKS = {
     sectors: [
       { id: 'drain-gate', name: 'Drain Gate', kind: 'containment', rule: 'baseline', segments: 12, hp: 80, speed: 55, accel: .48, armorEvery: 5, volatileEvery: 6, mutationAfter: 'plated-scales' },
       { id: 'filter-hall', name: 'Filter Hall', kind: 'pressure', rule: 'filter-pressure', segments: 14, hp: 92, speed: 61, accel: .52, armorEvery: 5, volatileEvery: 5, mutationAfter: 'unstable-glands' },
-      { id: 'split-pipe', name: 'Split Pipe', kind: 'split', rule: 'split-regrowth', segments: 15, hp: 104, speed: 65, accel: .56, armorEvery: 4, volatileEvery: 6, mutationAfter: 'overgrowth' },
-      { id: 'the-sump', name: 'The Sump', kind: 'hazard', rule: 'toxic-sump', segments: 17, hp: 115, speed: 70, accel: .62, armorEvery: 4, volatileEvery: 5, mutationAfter: 'frenzy' },
+      { id: 'split-pipe', name: 'Split Pipe', kind: 'split', rule: 'split-dual', splitLanes: 2, segments: 16, hp: 98, speed: 62, accel: .5, armorEvery: 5, volatileEvery: 6, mutationAfter: 'overgrowth' },
+      { id: 'the-sump', name: 'The Sump', kind: 'hunt', rule: 'hunt-escape', huntTarget: 1320, huntTime: 28, segments: 17, hp: 112, speed: 78, accel: .58, armorEvery: 4, volatileEvery: 5, mutationAfter: 'frenzy' },
       { id: 'greenfang-alpha', name: 'Greenfang Alpha', kind: 'alpha', rule: 'alpha-phases', segments: 18, hp: 128, speed: 74, accel: .66, armorEvery: 4, volatileEvery: 5, headHpMultiplier: 2.2 },
     ],
   },
@@ -237,13 +248,19 @@ export function spawnSector(s) {
     sludgeTimer: 7,
     sludgeActive: 0,
     alphaPhase: 0,
+    splitLanes: config.splitLanes || 1,
+    laneHeads: config.splitLanes ? Array.from({ length: config.splitLanes }, (_, lane) => s.head - lane * 110) : null,
+    huntDamage: 0,
+    huntTarget: config.huntTarget || 0,
+    huntTimer: config.huntTime || 0,
   };
   s.segments = Array.from({ length: count }, (_, i) => {
     const type = typeForIndex(config, i);
+    const lane = config.splitLanes ? i % config.splitLanes : 0;
     const typeHp = type === 'armor' ? 1.7 : type === 'volatile' ? .8 : 1;
     const headHp = i === 0 ? config.headHpMultiplier : 1;
     const maxHp = config.hp * config.hpMultiplier * typeHp * headHp;
-    return { id: s.uid++, type, hp: maxHp, maxHp, d: s.head - i * 39, flash: 0 };
+    return { id: s.uid++, type, lane, hp: maxHp, maxHp, d: s.head - i * 39, flash: 0 };
   });
   placeSegments(s);
   s.run.encounterHistory.push({ sector: s.run.sector, encounterId: config.id, mutations: [...s.run.mutations] });
@@ -252,10 +269,16 @@ export function spawnSector(s) {
 }
 
 export function placeSegments(s) {
-  s.segments.forEach((seg, i) => {
-    seg.d = s.head - i * 39;
-    Object.assign(seg, pathAt(seg.d));
-  });
+  const lanes = s.encounterState?.splitLanes || 1;
+  const laneIndexes = Array.from({ length: lanes }, () => 0);
+  for (const seg of s.segments) {
+    const lane = Math.min(lanes - 1, seg.lane || 0);
+    const index = laneIndexes[lane]++;
+    const head = s.encounterState?.laneHeads?.[lane] ?? s.head;
+    seg.d = head - index * 42;
+    Object.assign(seg, pathAtLane(seg.d, lane, lanes));
+  }
+  if (s.encounterState?.laneHeads) s.head = Math.max(...s.encounterState.laneHeads);
 }
 
 export function startGame(s) {
@@ -350,12 +373,23 @@ export function damage(s, id, amount, source = 'shot') {
   const directArmor = source === 'basic' ? .75 : 1;
   const dealt = Math.min(seg.hp, amount * (seg.type === 'armor' ? directArmor : 1));
   seg.hp -= dealt;
+  let huntComplete = false;
+  if (s.encounter?.rule === 'hunt-escape' && s.encounterState?.huntTarget) {
+    s.encounterState.huntDamage = Math.min(s.encounterState.huntTarget, s.encounterState.huntDamage + dealt);
+    huntComplete = s.encounterState.huntDamage >= s.encounterState.huntTarget;
+  }
   seg.flash = .09;
   s.score += Math.round(dealt);
   if (isBasicSource(source)) gainUltimate(s, dealt * s.buster.basic.ultimateGain);
   s.events.push({ type: 'hit', x: seg.x, y: seg.y, amount: dealt, source });
 
-  if (seg.hp > .0001) return;
+  if (seg.hp > .0001) {
+    if (huntComplete && s.phase === 'playing') {
+      s.events.push({ type: 'hunt-complete', damage: s.encounterState.huntDamage, target: s.encounterState.huntTarget });
+      finishSector(s);
+    }
+    return;
+  }
   const neighbors = [s.segments[index - 1], s.segments[index + 1]].filter(Boolean).map(n => n.id);
   s.segments.splice(index, 1);
   s.kills++;
@@ -364,12 +398,23 @@ export function damage(s, id, amount, source = 'shot') {
   s.maxCombo = Math.max(s.maxCombo, s.combo);
   s.score += 100 * Math.min(s.combo, 8);
   if (isBasicSource(source)) gainUltimate(s, .75);
-  s.head = Math.max(s.segments.length * 39 + 30, s.head - Math.min(85, s.buster.basic.push));
+  const push = Math.min(85, s.buster.basic.push);
+  if (s.encounterState?.laneHeads) {
+    const lane = Math.min(s.encounterState.laneHeads.length - 1, seg.lane || 0);
+    s.encounterState.laneHeads[lane] = Math.max(80, s.encounterState.laneHeads[lane] - push);
+    s.head = Math.max(...s.encounterState.laneHeads);
+  } else {
+    s.head = Math.max(s.segments.length * 39 + 30, s.head - push);
+  }
   s.events.push({ type: 'break', x: seg.x, y: seg.y, kind: seg.type, combo: s.combo });
 
   const config = getEncounterConfig(s);
   const explosion = s.build.blast + (seg.type === 'volatile' ? 48 + s.run.sector * 6 + config.volatileBlast : 0);
   if (explosion) neighbors.forEach(next => damage(s, next, explosion, 'explosion'));
+  if (huntComplete && s.phase === 'playing') {
+    s.events.push({ type: 'hunt-complete', damage: s.encounterState.huntDamage, target: s.encounterState.huntTarget });
+    finishSector(s);
+  }
 }
 
 function damageObjective(s, id, amount, source = 'basic') {
@@ -390,6 +435,7 @@ function damageObjective(s, id, amount, source = 'basic') {
 }
 
 function encounterComplete(s) {
+  if (s.encounter?.rule === 'hunt-escape') return s.encounterState.huntDamage >= s.encounterState.huntTarget;
   return s.segments.length === 0 && s.objectives.length === 0;
 }
 
@@ -452,7 +498,9 @@ function appendSegments(s, count, hpScale = .72, forceArmor = false) {
     const type = forceArmor ? 'armor' : (i % 3 === 2 ? 'volatile' : 'normal');
     const typeHp = type === 'armor' ? 1.7 : type === 'volatile' ? .8 : 1;
     const maxHp = config.hp * config.hpMultiplier * typeHp * hpScale;
-    s.segments.push({ id: s.uid++, type, hp: maxHp, maxHp, d: 0, flash: 0 });
+    const lanes = config.splitLanes || 1;
+    const lane = lanes > 1 ? i % lanes : 0;
+    s.segments.push({ id: s.uid++, type, lane, hp: maxHp, maxHp, d: 0, flash: 0 });
   }
   placeSegments(s);
 }
@@ -477,10 +525,8 @@ function encounterRuleEffects(s, dt) {
     }
   }
 
-  if (rule === 'split-regrowth' && !runtime.splitTriggered && s.segments.length <= Math.ceil(runtime.initialSegments * .6)) {
-    runtime.splitTriggered = true;
-    appendSegments(s, 4, .62);
-    s.events.push({ type: 'split', count: 4 });
+  if (rule === 'split-dual') {
+    effects.speed = 1.03;
   }
 
   if (rule === 'toxic-sump') {
@@ -576,7 +622,23 @@ export function update(s, dt, input = {}) {
     s.events.push({ type: 'shot', ammo: s.ammo, projectiles: count });
   }
 
-  s.head += (config.speed * config.speedMultiplier + s.sectorTime * config.accel) * ruleEffects.speed * dt;
+  const advance = (config.speed * config.speedMultiplier + s.sectorTime * config.accel) * ruleEffects.speed * dt;
+  if (s.encounterState?.laneHeads) {
+    s.encounterState.laneHeads = s.encounterState.laneHeads.map((head, lane) => head + advance * (1 + lane * .055));
+    s.head = Math.max(...s.encounterState.laneHeads);
+  } else {
+    s.head += advance;
+  }
+
+  if (s.encounter?.rule === 'hunt-escape') {
+    s.encounterState.huntTimer = Math.max(0, s.encounterState.huntTimer - dt);
+    if (s.encounterState.huntTimer <= 0 && s.phase === 'playing') {
+      s.phase = 'lost';
+      s.events.push({ type: 'hunt-escaped', damage: s.encounterState.huntDamage, target: s.encounterState.huntTarget });
+      s.events.push({ type: 'end' });
+      return;
+    }
+  }
   placeSegments(s);
   for (const seg of s.segments) seg.flash = Math.max(0, seg.flash - dt);
   for (const obj of s.objectives) obj.flash = Math.max(0, obj.flash - dt);
