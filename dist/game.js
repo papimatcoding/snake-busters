@@ -148,6 +148,9 @@ function events() {
     if (e.type === 'split') announce(language === 'es' ? `TUBERÍA BIFURCADA · +${e.count} SEGMENTOS` : `SPLIT PIPE · +${e.count} SEGMENTS`);
     if (e.type === 'sludge') announce(language === 'es' ? 'PULSO DE LODO TÓXICO' : 'TOXIC SLUDGE PULSE');
     if (e.type === 'alpha-phase') announce(language === 'es' ? `GREENFANG ALFA · FASE ${e.phase + 1}` : `GREENFANG ALPHA · PHASE ${e.phase + 1}`);
+    if (e.type === 'venom-telegraph') tone(210, .08, .018, 'triangle');
+    if (e.type === 'venom-active') { rings.push({ x:e.x, y:e.y, life:.34, color:'#b7ed6d', venom:true, radius:e.radius }); tone(110, .18, .025, 'sawtooth'); }
+    if (e.type === 'venom-hit') { shake = reduceMotion ? 0 : 6; burst(e.x, e.y, '#b7ed6d', 16); labels.push({ x:e.x, y:e.y-24, text:language === 'es' ? 'VENENO' : 'VENOM', life:.65, color:'#dfff9b' }); }
     if (e.type === 'hunt-complete') announce(language === 'es' ? 'CAZA COMPLETADA · GREENFANG REPELIDA' : 'HUNT COMPLETE · GREENFANG DRIVEN OFF');
     if (e.type === 'hunt-escaped') announce(language === 'es' ? 'GREENFANG HA ESCAPADO' : 'GREENFANG ESCAPED');
     if (e.type === 'objective-hit') { burst(e.x, e.y, '#b9e973', 3); labels.push({ x:e.x, y:e.y-24, text:`-${Math.max(1,Math.round(e.amount))}`, life:.42, color:'#dfffa4', small:true }); }
@@ -247,6 +250,28 @@ function drawBackground(t) {
     ctx.strokeStyle = `rgba(255,105,89,${.20 + pulse * .22})`; ctx.lineWidth = 7; ctx.strokeRect(4, 4, WIDTH - 8, HEIGHT - 8);
   }
 }
+function drawHazards(t) {
+  for (const hazard of state.hazards || []) {
+    if (hazard.type !== 'venom-strike') continue;
+    const telegraphing = hazard.telegraph > 0;
+    const pulse = reduceMotion ? 0 : Math.sin(t * 12 + hazard.id) * 2;
+    ctx.save();
+    ctx.translate(hazard.x, hazard.y);
+    ctx.setLineDash(telegraphing ? [8, 6] : []);
+    ctx.lineWidth = telegraphing ? 2 : 4;
+    ctx.strokeStyle = telegraphing ? 'rgba(191,239,111,.8)' : '#c9ff78';
+    ctx.fillStyle = telegraphing ? 'rgba(171,222,92,.06)' : 'rgba(171,222,92,.22)';
+    circle(0, 0, hazard.radius + pulse);
+    ctx.fill(); ctx.stroke();
+    ctx.setLineDash([]);
+    if (!telegraphing) {
+      ctx.fillStyle = 'rgba(202,255,121,.28)';
+      for (const [x,y,r] of [[-18,-8,6],[9,-15,5],[18,9,7],[-7,18,4]]) { circle(x,y,r+pulse*.1); ctx.fill(); }
+    }
+    ctx.restore();
+  }
+}
+
 function drawObjectives(t) {
   for (const obj of state.objectives || []) {
     if (obj.type !== 'nest') continue;
@@ -408,7 +433,7 @@ function drawPlayer(t) {
 function render(t, dt) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, WIDTH, HEIGHT);
   ctx.save(); if (shake > .1) { ctx.translate(Math.sin(t * 89) * shake, Math.cos(t * 107) * shake * .5); shake *= Math.exp(-dt * 18); }
-  drawBackground(t); drawObjectives(t); drawSnake(t); drawPlayer(t);
+  drawBackground(t); drawHazards(t); drawObjectives(t); drawSnake(t); drawPlayer(t);
   ctx.lineWidth = 3; ctx.strokeStyle = '#d5ff8d'; ctx.shadowColor = '#baff70'; ctx.shadowBlur = 8;
   for (const b of state.bullets) {
     const len = Math.hypot(b.vx, b.vy) || 1, nx = -b.vy / len, ny = b.vx / len;
@@ -425,7 +450,7 @@ function render(t, dt) {
   for (const p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; ctx.globalAlpha = Math.min(1, p.life * 3); ctx.fillStyle = p.color; ctx.fillRect(p.x - 2, p.y - 2, 4, 4); }
   for (const r of rings) {
     r.life -= dt; ctx.globalAlpha = Math.max(0, r.life * 2); ctx.strokeStyle = r.color; ctx.lineWidth = r.aoe ? 3 : 2;
-    circle(r.x, r.y, r.aoe ? r.radius * (1 + (1 - r.life / .62) * .08) : (1 - r.life / .45) * (r.explosive ? 95 : 50) + 10);
+    circle(r.x, r.y, r.aoe ? r.radius * (1 + (1 - r.life / .62) * .08) : r.venom ? r.radius * (1 + (1 - r.life / .34) * .08) : (1 - r.life / .45) * (r.explosive ? 95 : 50) + 10);
     ctx.stroke();
   }
   ctx.textAlign = 'center'; ctx.font = 'bold 15px ui-monospace, monospace';
