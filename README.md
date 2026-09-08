@@ -2,10 +2,18 @@
 
 Prototipo de action-roguelite cooperativo: forma un equipo de Snake Busters, entra en zonas infestadas y persigue serpientes mutantes sector a sector. El combate actual sigue siendo individual, pero la estructura de producto ya está preparada alrededor de expediciones, progresión de mundo y squads de hasta tres jugadores.
 
-## Estado actual — 0.5.0 · 8 septiembre 2026
+## Estado actual — 0.6.0 · 8 septiembre 2026
 
-**Iteración de maquinaria y combate provisional.** El arte sigue congelado como placeholder. Esta versión da personalidad mecánica al básico y a la definitiva de Volt, unifica la interfaz por idioma y empieza a convertir Toxic Sewers en encuentros con reglas propias en runtime.
+**Iteración de UI + expedición.** Se reemplaza la hoja de estilos heredada por un único sistema visual coherente, se rehace Greenfang como criatura conectada y se añade la primera bifurcación real de run con un objetivo alternativo destructible.
 
+- **UI 0.6 rehecha desde cero:** `style.css` deja de acumular capas antiguas y pasa a una sola jerarquía para inicio, HQ, mapa, partida, overlays y móvil. El dock de combate vive dentro de la arena y la zona de Volt se desplaza ligeramente para no solaparse.
+- **Pantalla inicial:** se elimina la falsa escena de personaje/serpiente y se sustituye por una composición de briefing + escáner de amenaza, más limpia y honesta con el estado de prototipo.
+- **Greenfang visual:** el Canvas dibuja primero un cuerpo continuo y después escamas/tipos de segmento; la cabeza es direccional y orgánica. Las barras de HP sólo aparecen al apuntar, recibir daño o en la cabeza.
+- **Primera bifurcación:** después del sector 2, la expedición ofrece `Conducto de mantenimiento` o `Nido infestado`. La elección queda en `run.routeHistory` y modifica el siguiente sector.
+- **Ruta segura:** el siguiente sector reduce un 10 % la velocidad de avance.
+- **Ruta infestada:** añade 4 segmentos, +10 % HP, +8 % velocidad y **3 nidos destructibles**. Limpiarla concede 1 muestra de mutación en la run.
+- **Objetivos no-serpiente:** el motor ya soporta objetivos destructibles independientes de los segmentos; los básicos pueden impactarlos y el sector no termina hasta limpiar cuerpo + objetivos.
+- **Balance tras simulación:** la carga de Tormenta baja de `0.30` a `0.08` por daño básico y la bonificación por rotura básica de `2` a `0.75`, reduciendo la definitiva a unas 3–4 activaciones por expedición automatizada.
 - **Volt placeholder en lobby:** se elimina el muñeco CSS provisional y se sustituye por una tarjeta/placeholder limpia. No diseñar personajes finales todavía.
 - **Tridente Tesla:** una carga de munición dispara **3 rayos** con ligera dispersión. Sigue usando 3 cargas recargables, pero el básico deja de ser un único láser genérico.
 - **Carga de definitiva:** sólo el daño derivado del **básico** (`basic` y `basic-chain`) carga la definitiva. Habilidad, definitiva y explosiones no generan carga.
@@ -30,7 +38,7 @@ Prototipo de action-roguelite cooperativo: forma un equipo de Snake Busters, ent
 - **Cinco sectores**, con 84 segmentos en la ruta actual y configuración acumulativa por encuentro y mutaciones.
 - **Seis mejoras**, tres opciones entre sectores y cuatro elecciones por expedición. Modifican el kit/build de la run y se reinician al abandonar o empezar otra.
 - Roturas con retroceso, partículas, sonido sintetizado opcional y multiplicador de puntos hasta ×8 al romper en menos de 1,65 segundos.
-- **Feedback de combate:** el HUD muestra munición, progreso de recarga y daño actual; los impactos enseñan daño flotante y los segmentos muestran barra de vida con HP numérico al recibir daño, ser apuntados o ser la cabeza.
+- **Feedback de combate:** el HUD muestra núcleo, sector, mutaciones, munición, habilidad y definitiva; daño flotante y HP contextual aparecen sólo cuando aportan información.
 - **Legibilidad del núcleo:** el HUD diferencia SEGURO / ALERTA / PELIGRO según el margen restante y el núcleo reacciona visualmente cuando la serpiente se acerca.
 - **Layout de escritorio:** la arena se adapta a la altura disponible para que HUD, arena y loadout quepan dentro del viewport en resoluciones normales, en lugar de obligar a perder interfaz por debajo de la pantalla.
 - Pausa manual y automática al cambiar de pestaña o perder el foco, derrota, victoria y reinicio completo.
@@ -77,9 +85,9 @@ node --test tests/engine.test.mjs
 npm run check
 ```
 
-Las **12 pruebas** cubren continuidad del recorrido, colisiones rápidas, explosiones recursivas, pausa, Tridente Tesla de tres rayos, carga de definitiva sólo con básicos, AOE apuntable, munición, persistencia de build, mutaciones, historial, reglas distintas por sector y victoria completa con tres columnas de upgrades. La simulación usa pasos fijos de 1/120 s y colisión barrida.
+Las **13 pruebas** cubren continuidad del recorrido, colisiones rápidas, explosiones, pausa, Tridente Tesla, carga de definitiva sólo con básicos, AOE apuntable, munición, persistencia, mutaciones, bifurcación segura/infestada, recompensa de ruta, reglas distintas por sector y runs completas. La simulación usa pasos fijos de 1/120 s y colisión barrida.
 
-Con la 0.5, las tres estrategias automatizadas completan los cinco sectores en aproximadamente **70–74 segundos**, incluyendo reglas de encuentro, Tridente Tesla y definitiva AOE. Sigue siendo sólo una comprobación de viabilidad y **no representa balance humano final**.
+Simulación 0.6: **ruta segura + kit completo ~83 s / 4 ultis**, **ruta infestada ~94 s / 3 ultis**, **ruta infestada a menor APM ~102 s / 4 ultis**. Una política sin ultimate todavía gana (~83 s), mientras que sólo básicos pierde en el sector 5. Esto es una comprobación de viabilidad, no balance humano final.
 
 ## Decisiones de diseño
 
@@ -92,15 +100,15 @@ Con la 0.5, las tres estrategias automatizadas completan los cinco sectores en a
 
 ## Próximo paso al retomar
 
-Seguir construyendo **maquinaria antes de personajes**. La siguiente iteración debería centrarse en **rutas y bifurcaciones**, encuentros que cambien objetivo (Nest/Hunt/Split real), una transición de mutación más clara y un Greenfang Alpha con lógica de boss más profunda. No crear un segundo Buster todavía; Volt sigue siendo la implementación de referencia.
+Seguir construyendo **maquinaria antes de personajes**. La siguiente iteración debería ampliar la bifurcación a más decisiones, añadir un objetivo `Hunt`/escape, evolucionar `Split` a múltiples rutas reales y profundizar Greenfang Alpha como boss. Mantener Volt como Buster de referencia.
 
 Pendiente:
 
-- Probar la 0.5 completa en escritorio y móvil: Tridente Tesla, carga de definitiva sólo con básicos, AOE de Q, idioma y reglas de sector.
+- Probar la 0.6 completa en escritorio y móvil: nueva UI, dock dentro de arena, cuerpo conectado de Greenfang, bifurcación y nidos.
 - Afinar duración, carga de ultimate, dificultad y retroceso después de jugar; la simulación automática no representa balance humano.
 - Mantener cualquier Buster futuro bloqueado hasta que el contrato basic/ability/ultimate y las upgrades genéricas estén asentados.
 - Diseñar el cooperativo real de 1–3 jugadores: sincronización, escalado que cambie situaciones (no sólo HP), party y servidor autoritativo. Ranked puede existir después, pero ya no es el eje principal del producto.
-- Dar comportamiento propio a cada tipo de encuentro, añadir bifurcaciones/eventos y convertir el sector 5 en el primer boss real.
+- Añadir más bifurcaciones, Hunt/Split real y convertir el sector 5 en un boss con ataques/patrones propios.
 - Arte definitivo, más recorridos y tipos de segmento después de validar el núcleo.
 
 **Mantener este README actualizado en cada cambio funcional**, con lo completado, cómo probarlo y el siguiente paso. Conservar la separación entre simulación y presentación para poder añadir nuevos Busters y un servidor más adelante.
