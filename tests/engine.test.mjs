@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createGame, startGame, update, damage, activateAbility, activateUltimate,
-  chooseUpgrade, spawnSector, placeSegments, pathAt, PATH_LENGTH, segmentCircleHit, STEP,
-  getEncounterConfig, MUTATIONS,
+  chooseUpgrade, chooseRoute, spawnSector, placeSegments, pathAt, PATH_LENGTH, segmentCircleHit, STEP,
+  getEncounterConfig, MUTATIONS, ROUTES,
 } from '../dist/engine.js';
 
 test('the track is continuous across each straight/curve junction and reaches the core', () => {
@@ -187,6 +187,41 @@ test('encounter history records the evolving expedition state', () => {
   assert.deepEqual(s.run.encounterHistory[1].mutations, ['plated-scales']);
 });
 
+test('sector 2 branches into a safe or infested route with persistent consequences', () => {
+  const safe = createGame();
+  startGame(safe);
+  safe.run.sector = 2;
+  spawnSector(safe);
+  safe.segments = [];
+  update(safe, STEP);
+  assert.equal(safe.phase, 'upgrade');
+  assert.equal(chooseUpgrade(safe, safe.choices[0]), true);
+  assert.equal(safe.phase, 'route');
+  assert.deepEqual(safe.run.routeChoices, ['maintenance', 'infested-nest']);
+  assert.equal(chooseRoute(safe, 'maintenance'), true);
+  assert.equal(safe.run.sector, 3);
+  assert.equal(safe.run.routeHistory[0].routeId, 'maintenance');
+  assert.ok(getEncounterConfig(safe).speedMultiplier < 1);
+
+  const risky = createGame();
+  startGame(risky);
+  risky.run.sector = 2;
+  spawnSector(risky);
+  risky.segments = [];
+  update(risky, STEP);
+  chooseUpgrade(risky, risky.choices[0]);
+  assert.equal(chooseRoute(risky, 'infested-nest'), true);
+  const riskyConfig = getEncounterConfig(risky);
+  assert.ok(riskyConfig.segmentBonus >= 4);
+  assert.ok(riskyConfig.hpMultiplier > 1);
+  assert.equal(ROUTES['infested-nest'].salvage, 1);
+
+  risky.segments = [];
+  update(risky, STEP);
+  assert.equal(risky.run.salvage, 1);
+  assert.ok(risky.events.some(e => e.type === 'route-reward'));
+});
+
 test('Toxic Sewers sectors have distinct runtime rules', () => {
   const pressure = createGame();
   pressure.run.sector = 2;
@@ -235,6 +270,7 @@ test('a repeatable aiming strategy can finish all five sectors with each offer c
 
     for (let tick = 0; tick < 120 * 300 && !['won', 'lost'].includes(s.phase); tick++) {
       if (s.phase === 'upgrade') chooseUpgrade(s, s.choices[column]);
+      if (s.phase === 'route') chooseRoute(s, column === 1 ? 'infested-nest' : 'maintenance');
       const target = s.segments.filter(n => n.d >= 0).sort((a, b) => b.y - a.y || a.hp - b.hp)[0];
 
       if (target) {
