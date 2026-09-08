@@ -12,13 +12,13 @@
 <body>
   <main class="shell">
     <header class="topbar">
-      <a class="wordmark" href="./" aria-label="Snake Busters, inicio">SNAKE<span>BUSTERS</span><small>PROTOTIPO 0.1</small></a>
+      <a class="wordmark" href="./" aria-label="Snake Busters, inicio">SNAKE<span>BUSTERS</span><small>PROTOTIPO 0.2</small></a>
       <div class="top-actions"><span class="mode">SUPERVIVENCIA · SOLO</span><button id="sound" class="quiet" aria-pressed="false">Sonido: no</button><button id="pause" class="quiet" disabled>Pausa <kbd>P</kbd></button></div>
     </header>
     <section class="hud" aria-label="Estado de la partida">
       <div><span class="label">OLEADA</span><strong id="wave">01 <small>/ 05</small></strong></div>
       <div><span class="label">PUNTUACIÓN</span><strong id="score">000000</strong></div>
-      <div class="integrity"><div class="integrity-label"><span class="label">DISTANCIA AL NÚCLEO</span><span id="distance">—</span></div><progress id="danger" value="75" max="100" aria-label="Distancia restante al núcleo"></progress></div>
+      <div class="integrity"><div class="integrity-label"><span class="label">NÚCLEO</span><span id="core-status">SEGURO</span></div><progress id="danger" value="75" max="100" aria-label="Margen restante antes de que la serpiente alcance el núcleo"></progress><small id="distance">—</small></div>
       <div class="record"><span class="label">RÉCORD LOCAL</span><strong id="best">000000</strong></div>
     </section>
     <section class="arena" aria-label="Campo de juego">
@@ -29,20 +29,24 @@
           <p class="eyebrow">BUSTER 01 / VOLT</p>
           <h1>ROMPE.<br><span>EN CADENA.</span></h1>
           <p class="intro">La serpiente se acerca al núcleo. Rompe sus segmentos para hacerla retroceder y sobrevive a cinco oleadas.</p>
-          <div class="start-controls"><span><kbd>WASD</kbd> Muévete</span><span><kbd>CLIC</kbd> Apunta y dispara</span><span><kbd>ESPACIO</kbd> Sobrecarga</span></div>
+          <div class="start-controls"><span><kbd>WASD</kbd> Muévete</span><span><kbd>CLIC</kbd> Dispara · 3 cargas</span><span><kbd>ESPACIO</kbd> Sobrecarga</span></div>
           <p class="touch-help">En móvil: mantén el dedo sobre tu objetivo. Mueve a Volt con los controles inferiores.</p>
           <button id="start" class="primary">ENTRAR EN LA ARENA <span>↗</span></button>
           <p class="footnote">Mismas oleadas en cada intento. Tu combinación marca la diferencia.</p>
         </div>
       </div>
     </section>
-    <section class="loadout" aria-label="Buster y habilidades">
-      <div class="buster"><span class="badge">V</span><div><strong>VOLT</strong><span>Conductor · Los impactos saltan a un vecino</span></div></div>
+    <section class="loadout" aria-label="Buster, munición y habilidades">
+      <div class="buster"><span class="badge"><span>V</span></span><div><strong>VOLT</strong><span>Conductor · Blaster de arco encadenado</span></div></div>
+      <div class="combat-readout">
+        <div class="ammo-block"><span class="label">MUNICIÓN</span><div id="ammo" class="ammo" aria-label="3 de 3 cargas disponibles"><i></i><i></i><i></i></div><small id="ammo-text">3 / 3 · LISTA</small></div>
+        <div class="damage-block"><span class="label">DAÑO</span><strong id="damage">14</strong><small id="reload-stat">RECARGA 0.82 s</small></div>
+      </div>
       <div id="build" class="build"><span class="muted">Tu primera mejora llega tras la oleada 1.</span></div>
       <button id="ability" class="ability" disabled><span>SOBRECARGA <kbd>ESPACIO</kbd></span><small id="cooldown">Descarga sobre el objetivo y sus vecinos</small><span class="ability-meter" id="ability-meter"></span></button>
     </section>
     <div class="mobile-controls" aria-label="Movimiento táctil"><button data-move="left" aria-label="Mover izquierda">←</button><button data-move="up" aria-label="Mover arriba">↑</button><button data-move="down" aria-label="Mover abajo">↓</button><button data-move="right" aria-label="Mover derecha">→</button></div>
-    <footer><div class="legend"><span><i class="normal"></i>ESTÁNDAR</span><span><i class="armor"></i>BLINDADO</span><span><i class="volatile"></i>EXPLOSIVO</span></div><span>Romper empuja. Encadenar multiplica.</span><button id="help" class="text-button">Controles y reglas</button></footer>
+    <footer><div class="legend"><span><i class="normal"></i>ESTÁNDAR</span><span><i class="armor"></i>BLINDADO</span><span><i class="volatile"></i>EXPLOSIVO</span></div><span>Gasta las 3 cargas para hacer burst; sobrevivir exige saber cuándo recargar.</span><button id="help" class="text-button">Controles y reglas</button></footer>
   </main>
   <script type="module" src="./game.js"></script>
 </body>
