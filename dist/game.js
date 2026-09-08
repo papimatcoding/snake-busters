@@ -51,6 +51,19 @@ const I18N = {
 const t = key => I18N[language]?.[key] ?? I18N.es[key] ?? key;
 const ENCOUNTER_KEYS = {'drain-gate':'enc.drain','filter-hall':'enc.filter','split-pipe':'enc.split','the-sump':'enc.sump','greenfang-alpha':'enc.alpha'};
 function encounterName(encounter = state.encounter) { return t(ENCOUNTER_KEYS[encounter?.id] || 'enc.drain'); }
+const UPGRADE_EN = {
+  chain: ['Double Arc', 'Each Tesla Trident bolt jumps to one additional neighbor.'],
+  power: ['High Voltage', '+25% damage to all three basic bolts.'],
+  rapid: ['Fast Coil', 'Ammo reloads 20% faster and the Trident fires 12% faster.'],
+  blast: ['Reactive Rupture', 'Every break deals 16 damage to adjacent segments.'],
+  pulse: ['Capacitor', 'The ability recharges 25% faster and hits two additional targets.'],
+  force: ['Shockwave', 'Breaks push 60% harder and the ability deals +25% damage.'],
+};
+function upgradeCopy(u) {
+  if (language === 'es') return { name: u.name, text: u.text };
+  const translated = UPGRADE_EN[u.id];
+  return { name: translated?.[0] || u.name, text: translated?.[1] || u.text };
+}
 function applyLanguage() {
   document.documentElement.lang = language;
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
@@ -121,10 +134,14 @@ function events() {
     if (e.type === 'ultimate-bolt') burst(e.x, e.y, '#d8c8ff', 10);
     if (e.type === 'ultimate') { shake = reduceMotion ? 0 : 10; tone(95, .5, .065, 'sawtooth'); announce(language === 'es' ? 'TORMENTA DE NÚCLEO' : 'CORE STORM'); }
     if (e.type === 'wave') announce(`${language === 'es' ? 'SECTOR' : 'SECTOR'} ${e.wave} / 5 · ${encounterName()}`);
+    if (e.type === 'reinforce') announce(language === 'es' ? `PRESIÓN DE FILTROS · +${e.count} BLINDADOS` : `FILTER PRESSURE · +${e.count} ARMORED`);
+    if (e.type === 'split') announce(language === 'es' ? `TUBERÍA BIFURCADA · +${e.count} SEGMENTOS` : `SPLIT PIPE · +${e.count} SEGMENTS`);
+    if (e.type === 'sludge') announce(language === 'es' ? 'PULSO DE LODO TÓXICO' : 'TOXIC SLUDGE PULSE');
+    if (e.type === 'alpha-phase') announce(language === 'es' ? `GREENFANG ALFA · FASE ${e.phase + 1}` : `GREENFANG ALPHA · PHASE ${e.phase + 1}`);
     if (e.type === 'break') {
       burst(e.x, e.y, colors[e.kind], e.kind === 'volatile' ? 30 : 18);
       rings.push({ x: e.x, y: e.y, life: .45, color: colors[e.kind], explosive: e.kind === 'volatile' });
-      labels.push({ x: e.x, y: e.y - 25, text: e.combo > 1 ? `×${Math.min(e.combo, 8)} CADENA` : '+100', life: .85, color: e.combo > 1 ? '#fff0ac' : '#c1fb60' });
+      labels.push({ x: e.x, y: e.y - 25, text: e.combo > 1 ? `×${Math.min(e.combo, 8)} ${language === 'es' ? 'CADENA' : 'CHAIN'}` : '+100', life: .85, color: e.combo > 1 ? '#fff0ac' : '#c1fb60' });
       shake = reduceMotion ? 0 : Math.min(9, 3 + e.combo); tone(170 + e.combo * 90, .15, .045, 'triangle');
     }
     if (e.type === 'clear') {
@@ -338,7 +355,7 @@ function syncUI() {
     const es = language === 'es';
     const mutationName = mutation ? (es ? mutation.name : ({'plated-scales':'Plated Scales','unstable-glands':'Unstable Glands','overgrowth':'Overgrowth','frenzy':'Alpha Frenzy'}[mutation.id] || mutation.name)) : '';
     const mutationText = mutation ? (es ? mutation.text : ({'plated-scales':'Greenfang develops more armor and extra resistance.','unstable-glands':'More explosive segments appear and rupture harder.','overgrowth':'Greenfang regrows more body between sectors.','frenzy':'The creature advances faster near the nest.'}[mutation.id] || mutation.text)) : '';
-    panel(`<span class="run-tag">SECTOR ${state.run.sector} ${es ? 'LIMPIO' : 'CLEARED'}</span><p class="eyebrow">${es ? 'COMBINACIÓN DE EXPEDICIÓN' : 'EXPEDITION BUILD'}</p><h2>${es ? 'Elige tu mejora.' : 'Choose your upgrade.'}</h2><p class="intro">${es ? 'Tu combinación persiste hasta que termine la expedición.' : 'Your build persists until the expedition ends.'}${mutation ? ` Greenfang: <b>${mutationName}</b> — ${mutationText}` : ''}</p><div class="upgrade-grid">${state.choices.map((id, i) => { const u = UPGRADES.find(u => u.id === id); return `<button class="upgrade-card" data-upgrade="${id}"><span class="symbol" aria-hidden="true">${u.icon}</span><strong>${u.name}</strong><p>${u.text}</p><small>${es ? 'ELEGIR' : 'CHOOSE'} · ${i + 1}</small></button>`; }).join('')}</div>`);
+    panel(`<span class="run-tag">SECTOR ${state.run.sector} ${es ? 'LIMPIO' : 'CLEARED'}</span><p class="eyebrow">${es ? 'COMBINACIÓN DE EXPEDICIÓN' : 'EXPEDITION BUILD'}</p><h2>${es ? 'Elige tu mejora.' : 'Choose your upgrade.'}</h2><p class="intro">${es ? 'Tu combinación persiste hasta que termine la expedición.' : 'Your build persists until the expedition ends.'}${mutation ? ` Greenfang: <b>${mutationName}</b> — ${mutationText}` : ''}</p><div class="upgrade-grid">${state.choices.map((id, i) => { const u = UPGRADES.find(u => u.id === id), copy = upgradeCopy(u); return `<button class="upgrade-card" data-upgrade="${id}"><span class="symbol" aria-hidden="true">${u.icon}</span><strong>${copy.name}</strong><p>${copy.text}</p><small>${es ? 'ELEGIR' : 'CHOOSE'} · ${i + 1}</small></button>`; }).join('')}</div>`);
     document.querySelectorAll('[data-upgrade]').forEach(b => b.onclick = () => select(b.dataset.upgrade));
   }
   if (['won', 'lost'].includes(state.phase)) {
