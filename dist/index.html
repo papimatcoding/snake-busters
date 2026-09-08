@@ -83,15 +83,15 @@
             <p data-i18n="hq.selected">BUSTER SELECCIONADO</p>
             <h2>VOLT</h2>
             <span>CONDUCTOR</span>
-            <small>“Si brilla, conduce. Si conduce, revienta.”</small>
+            <small data-i18n="hq.quote">“Si brilla, conduce. Si conduce, revienta.”</small>
           </div>
         </section>
 
         <aside class="party-panel">
           <div class="party-heading"><div><p class="micro" data-i18n="party.squad">ESCUADRÓN</p><strong>1 / 3</strong></div><button data-feature="social" class="invite-small" data-i18n="party.invite">+ INVITAR</button></div>
           <div class="party-slot filled"><span class="mini-volt">V</span><div><strong data-i18n="party.you">TÚ</strong><small>VOLT · <span data-i18n="party.ready">LISTO</span></small></div><i></i></div>
-          <button class="party-slot empty" data-feature="social"><span>+</span><div><strong>COMPAÑERO</strong><small>INVITAR</small></div></button>
-          <button class="party-slot empty" data-feature="social"><span>+</span><div><strong>COMPAÑERO</strong><small>INVITAR</small></div></button>
+          <button class="party-slot empty" data-feature="social"><span>+</span><div><strong data-i18n="party.mate">COMPAÑERO</strong><small data-i18n="party.inviteShort">INVITAR</small></div></button>
+          <button class="party-slot empty" data-feature="social"><span>+</span><div><strong data-i18n="party.mate">COMPAÑERO</strong><small data-i18n="party.inviteShort">INVITAR</small></div></button>
           <div class="party-note"><span data-i18n="party.target">OBJETIVO COOPERATIVO</span><p data-i18n="party.note">La versión actual sigue siendo jugable en solitario. El escuadrón real se conectará sobre esta estructura.</p></div>
         </aside>
       </main>
@@ -110,7 +110,7 @@
         <section class="outbreak-intro">
           <p class="kicker" data-i18n="map.world">MUNDO 01 // SUBCIUDAD DE SABADELL</p>
           <h1><span data-i18n="world.toxic">ALCANTARILLAS</span><br><span data-i18n="world.sewers">TÓXICAS</span></h1>
-          <p>Algo enorme está creciendo bajo la ciudad. Cada sector que limpias empuja a la criatura más adentro del nido. No esperes que llegue igual al siguiente.</p>
+          <p data-i18n="map.desc">Algo enorme está creciendo bajo la ciudad. Cada sector que limpias empuja a la criatura más adentro del nido. No esperes que llegue igual al siguiente.</p>
           <div class="target-card">
             <div class="wanted-head" aria-hidden="true"><i></i><i></i><b></b></div>
             <div><small data-i18n="map.target">OBJETIVO</small><strong>GREENFANG</strong><span data-i18n="map.class">SERPIENTE ADAPTATIVA · CLASE C</span></div>
@@ -129,13 +129,13 @@
 
         <aside class="deployment-card">
           <p class="micro" data-i18n="deploy.title">DESPLIEGUE</p>
-          <h2>SECTOR 01</h2>
+          <h2 data-i18n="deploy.sector">SECTOR 01</h2>
           <strong data-i18n="enc.drain">COMPUERTA DE DRENAJE</strong>
-          <div class="deploy-rule"><span>OBJETIVO</span><p>Evita que Greenfang alcance el núcleo de contención.</p></div>
+          <div class="deploy-rule"><span data-i18n="deploy.objective">OBJETIVO</span><p data-i18n="deploy.objectiveText">Evita que Greenfang alcance el núcleo de contención.</p></div>
           <div class="deploy-rule"><span data-i18n="deploy.run">EXPEDICIÓN</span><p data-i18n="deploy.runText">5 sectores · mejoras entre encuentros · la combinación se reinicia al abandonar.</p></div>
           <div class="squad-ready"><i>V</i><div><small>BUSTER</small><strong>VOLT</strong></div><span data-i18n="party.ready">LISTO</span></div>
-          <button id="outbreak-deploy" class="mega-button deploy">DESPLEGAR <span>→</span></button>
-          <small class="prototype-note">Los 5 sectores comparten circuito por ahora, pero ya tienen configuración, build y mutaciones persistentes propias.</small>
+          <button id="outbreak-deploy" class="mega-button deploy"><span data-i18n="deploy.go">DESPLEGAR</span><span>→</span></button>
+          <small class="prototype-note" data-i18n="deploy.note">Los 5 sectores comparten circuito por ahora, pero ya tienen configuración, combinación y mutaciones persistentes propias.</small>
         </aside>
       </main>
     </section>
@@ -173,7 +173,7 @@
           </div>
           <button id="ability" class="combat-skill" disabled>
             <span class="skill-key">E</span>
-            <div><small data-i18n="combat.ability">HABILIDAD</small><strong>SOBRECARGA</strong><span id="cooldown">LISTA</span></div>
+            <div><small data-i18n="combat.ability">HABILIDAD</small><strong data-i18n="combat.overload">SOBRECARGA</strong><span id="cooldown">LISTA</span></div>
             <i class="skill-meter" id="ability-meter"></i>
           </button>
           <button id="ultimate" class="combat-skill ultimate-skill" disabled>
