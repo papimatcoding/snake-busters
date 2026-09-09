@@ -162,6 +162,7 @@ export function createGame(options = {}) {
     head: 800,
     player: { x: 600, y: 625 },
     aim: { x: 600, y: 330 },
+    core: { hp: 100, maxHp: 100, hitCooldown: 0, flash: 0 },
     buster,
     run: {
       outbreakId,
@@ -634,6 +635,10 @@ export function update(s, dt, input = {}) {
   s.waveTime = s.sectorTime;
   s.abilityCooldown = Math.max(0, s.abilityCooldown - dt);
   s.fireTimer -= dt;
+  if (s.core) {
+    s.core.hitCooldown = Math.max(0, s.core.hitCooldown - dt);
+    s.core.flash = Math.max(0, s.core.flash - dt);
+  }
   const config = getEncounterConfig(s);
   const ruleEffects = encounterRuleEffects(s, dt);
   s.playerDebuff = Math.max(0, s.playerDebuff - dt);
@@ -742,10 +747,46 @@ export function update(s, dt, input = {}) {
   }
 
   s.bullets = s.bullets.filter(b => b.life > 0 && b.x > -20 && b.x < WIDTH + 20 && b.y > -20 && b.y < HEIGHT + 20);
-  if (encounterComplete(s)) finishSector(s);
-  else if (s.segments.length && s.head >= PATH_LENGTH) {
-    s.phase = 'lost';
-    s.bullets = [];
-    s.events.push({ type: 'end' });
+  if (encounterComplete(s)) {
+    finishSector(s);
+  } else if (s.segments.length && s.head >= PATH_LENGTH && (s.core?.hitCooldown || 0) <= 0) {
+    const lanes = s.encounterState?.laneHeads;
+    let breachedLane = 0;
+    if (lanes?.length) {
+      breachedLane = lanes.reduce((best, head, lane) => head > lanes[best] ? lane : best, 0);
+    }
+    const leader = s.segments
+      .filter(seg => (seg.lane || 0) === breachedLane && seg.d >= 0)
+      .sort((a, b) => b.d - a.d)[0];
+    const typeBonus = leader?.type === 'volatile' ? 7 : leader?.type === 'armor' ? 4 : 0;
+    const coreDamage = 17 + s.run.sector * 3 + typeBonus;
+    s.core ||= { hp: 100, maxHp: 100, hitCooldown: 0, flash: 0 };
+    s.core.hp = Math.max(0, s.core.hp - coreDamage);
+    s.core.hitCooldown = .7;
+    s.core.flash = .34;
+    s.events.push({
+      type: 'core-hit',
+      amount: coreDamage,
+      hp: s.core.hp,
+      maxHp: s.core.maxHp,
+      lane: breachedLane,
+      source: leader?.type || 'normal',
+    });
+
+    const repel = 235;
+    if (lanes?.length) {
+      lanes[breachedLane] = Math.max(80, lanes[breachedLane] - repel);
+      s.head = Math.max(...lanes);
+    } else {
+      s.head = Math.max(s.segments.length * 42 + 40, s.head - repel);
+    }
+    placeSegments(s);
+
+    if (s.core.hp <= 0) {
+      s.phase = 'lost';
+      s.bullets = [];
+      s.events.push({ type: 'core-destroyed' });
+      s.events.push({ type: 'end' });
+    }
   }
 }
