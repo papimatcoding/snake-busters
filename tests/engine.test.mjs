@@ -46,7 +46,8 @@ test('an idle player loses; pause does not advance the expedition', () => {
     s.events = [];
   }
   assert.equal(s.phase, 'lost');
-  assert.ok(s.head >= PATH_LENGTH);
+  assert.equal(s.core.hp, 0, 'idle loss now happens after repeated core breaches');
+  assert.ok(s.head < PATH_LENGTH, 'each breach repels Greenfang before the final destruction');
 
   const paused = createGame();
   paused.phase = 'paused';
