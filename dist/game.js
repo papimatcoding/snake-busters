@@ -1,4 +1,4 @@
-import { createGame, startGame, update, activateAbility, activateUltimate, chooseUpgrade, chooseRoute, getEncounter, MUTATIONS, ROUTES, pathAt, pathAtLane, PATH_LENGTH, UPGRADES, WIDTH, HEIGHT, STEP, clamp } from './engine.js?v=0.9.6';
+import { createGame, startGame, update, activateAbility, activateUltimate, chooseUpgrade, chooseRoute, getEncounter, MUTATIONS, ROUTES, pathAt, pathAtLane, PATH_LENGTH, UPGRADES, WIDTH, HEIGHT, STEP, clamp } from './engine.js?v=0.9.7';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game'), ctx = canvas.getContext('2d');
@@ -9,7 +9,7 @@ const isMobileViewport = () => matchMedia('(max-width: 680px)').matches;
 const colors = { normal: '#c1fb60', armor: '#8cabff', volatile: '#ff9875' };
 let state = createGame(), last = 0, accumulator = 0, shown = 'ready', best = 0, bestSector = 0;
 let particles = [], arcs = [], labels = [], rings = [], shake = 0, announcementTime = 0, lobbyToastTime = 0;
-let pointer = { x: 600, y: 330 }, shooting = false, keys = new Set(), touchMoves = new Map();
+let pointer = { x: WIDTH / 2, y: 640 }, shooting = false, keys = new Set(), touchMoves = new Map();
 let mobileShotQueued = false, mobileAimActive = false, mobileAimKind = 'basic', mobileAutoAimFlash = 0;
 let sound = false, audioContext, language = 'es';
 let runtimeError = '';
@@ -29,7 +29,7 @@ try {
 
 const I18N = {
   es: {
-    'title.kicker':'EQUIPO DE CONTENCIÓN // BUILD 0.9.6','title.line1':'ELLAS MUTAN.','title.line2':'NOSOTROS MÁS.','title.sub':'Entra en zonas infestadas, crea una combinación distinta en cada expedición y llega más lejos con tu escuadrón.','title.enter':'ENTRAR A LA BASE','title.local':'PROTOTIPO · TODO EL PROGRESO ACTUAL ES LOCAL','title.unit':'UNIDAD DE RESPUESTA','title.scan':'REGISTRO DE AMENAZA','title.target':'OBJETIVO','title.state':'ESTADO','title.mutating':'MUTANDO','title.classified':'SEÑAL BIOLÓGICA INESTABLE','title.noVisual':'VISUAL BLOQUEADO · DATOS DE CAMPO INCOMPLETOS',
+    'title.kicker':'EQUIPO DE CONTENCIÓN // BUILD 0.9.7','title.line1':'ELLAS MUTAN.','title.line2':'NOSOTROS MÁS.','title.sub':'Entra en zonas infestadas, crea una combinación distinta en cada expedición y llega más lejos con tu escuadrón.','title.enter':'ENTRAR A LA BASE','title.local':'PROTOTIPO · TODO EL PROGRESO ACTUAL ES LOCAL','title.unit':'UNIDAD DE RESPUESTA','title.scan':'REGISTRO DE AMENAZA','title.target':'OBJETIVO','title.state':'ESTADO','title.mutating':'MUTANDO','title.classified':'SEÑAL BIOLÓGICA INESTABLE','title.noVisual':'VISUAL BLOQUEADO · DATOS DE CAMPO INCOMPLETOS',
     'profile.rank':'NIVEL 1 · RECLUTA','nav.busters':'BUSTERS','nav.custom':'PERSONALIZAR','nav.cosmetics':'COSMÉTICOS','nav.shop':'TIENDA','nav.social':'SOCIAL','nav.party':'ESCUADRÓN','common.soon':'PRÓXIMAMENTE','common.play':'JUGAR','common.baseBack':'← BASE','common.start':'INICIO','common.locked':'BLOQUEADO',
     'hq.response1':'CONTROL DE','hq.response2':'BROTES','hq.active':'BROTE ACTIVO','hq.best':'MEJOR SECTOR','hq.threat':'AMENAZA','hq.low':'BAJA','hq.outbreak':'BROTE 01','hq.artPending':'ARTE DE PERSONAJE PENDIENTE','hq.selected':'BUSTER SELECCIONADO','hq.quote':'“Si brilla, conduce. Si conduce, revienta.”',
     'party.squad':'ESCUADRÓN','party.invite':'+ INVITAR','party.you':'TÚ','party.ready':'LISTO','party.target':'OBJETIVO COOPERATIVO','party.note':'La versión actual sigue siendo jugable en solitario. El escuadrón real se conectará sobre esta estructura.','party.mate':'COMPAÑERO','party.inviteShort':'INVITAR',
@@ -44,7 +44,7 @@ const I18N = {
     'toast.busters':'Volt es el Buster de referencia. El diseño final de personajes llegará después de cerrar los sistemas.','toast.locker':'Personalización preparada para aspectos, efectos, banners y gestos.','toast.shop':'La tienda todavía no tiene economía ni compras.','toast.social':'El escuadrón de 3 está preparado visualmente. El multijugador real vendrá después.'
   },
   en: {
-    'title.kicker':'CONTAINMENT CREW // BUILD 0.9.6','title.line1':'THEY MUTATE.','title.line2':'WE HIT HARDER.','title.sub':'Enter infested zones, build a different loadout every expedition and push farther with your squad.','title.enter':'ENTER HQ','title.local':'PROTOTYPE · CURRENT PROGRESS IS LOCAL ONLY','title.unit':'RESPONSE UNIT','title.scan':'THREAT LOG','title.target':'TARGET','title.state':'STATUS','title.mutating':'MUTATING','title.classified':'UNSTABLE BIOLOGICAL SIGNAL','title.noVisual':'VISUAL LOCKED · FIELD DATA INCOMPLETE',
+    'title.kicker':'CONTAINMENT CREW // BUILD 0.9.7','title.line1':'THEY MUTATE.','title.line2':'WE HIT HARDER.','title.sub':'Enter infested zones, build a different loadout every expedition and push farther with your squad.','title.enter':'ENTER HQ','title.local':'PROTOTYPE · CURRENT PROGRESS IS LOCAL ONLY','title.unit':'RESPONSE UNIT','title.scan':'THREAT LOG','title.target':'TARGET','title.state':'STATUS','title.mutating':'MUTATING','title.classified':'UNSTABLE BIOLOGICAL SIGNAL','title.noVisual':'VISUAL LOCKED · FIELD DATA INCOMPLETE',
     'profile.rank':'LEVEL 1 · RECRUIT','nav.busters':'BUSTERS','nav.custom':'CUSTOMIZE','nav.cosmetics':'COSMETICS','nav.shop':'SHOP','nav.social':'SOCIAL','nav.party':'SQUAD','common.soon':'COMING SOON','common.play':'PLAY','common.baseBack':'← HQ','common.start':'START','common.locked':'LOCKED',
     'hq.response1':'OUTBREAK','hq.response2':'CONTROL','hq.active':'ACTIVE OUTBREAK','hq.best':'BEST SECTOR','hq.threat':'THREAT','hq.low':'LOW','hq.outbreak':'OUTBREAK 01','hq.artPending':'CHARACTER ART PENDING','hq.selected':'SELECTED BUSTER','hq.quote':'“If it glows, it conducts. If it conducts, it blows.”',
     'party.squad':'SQUAD','party.invite':'+ INVITE','party.you':'YOU','party.ready':'READY','party.target':'CO-OP TARGET','party.note':'The current build is still playable solo. Real squad play will plug into this structure later.','party.mate':'TEAMMATE','party.inviteShort':'INVITE',
@@ -225,14 +225,16 @@ function drawBackground(t) {
   for (let x = 0; x < WIDTH; x += 48) line(x, 0, x, HEIGHT);
   for (let y = 0; y < HEIGHT; y += 48) line(0, y, WIDTH, y);
 
-  ctx.fillStyle = '#13283a'; ctx.fillRect(20, 582, 1160, 141);
-  ctx.fillStyle = 'rgba(115,218,250,.055)'; ctx.fillRect(20, 582, 1160, 7);
-  ctx.strokeStyle = '#3b6175'; ctx.setLineDash([7, 11]); line(25, 585, 1175, 585); ctx.setLineDash([]);
+  const combatY = 860;
+  ctx.fillStyle = '#102838'; ctx.fillRect(18, combatY, WIDTH - 36, HEIGHT - combatY - 18);
+  ctx.fillStyle = 'rgba(115,218,250,.055)'; ctx.fillRect(18, combatY, WIDTH - 36, 7);
+  ctx.strokeStyle = '#3b6175'; ctx.setLineDash([7, 11]); line(24, combatY + 3, WIDTH - 24, combatY + 3); ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(104,216,240,.035)'; ctx.fillRect(35, combatY + 30, WIDTH - 70, HEIGHT - combatY - 70);
 
   ctx.font = '800 11px ui-monospace, monospace'; ctx.fillStyle = '#80a8bd'; ctx.textAlign = 'left';
-  ctx.fillText(language === 'es' ? 'ZONA BUSTER' : 'BUSTER ZONE', 40, 614);
-  ctx.fillText(`${encounterName().toUpperCase()} // ${state.encounter?.kind?.toUpperCase() || 'CONTAINMENT'}`, 40, 40);
-  ctx.textAlign = 'right'; ctx.fillStyle = '#5e8499'; ctx.fillText(`SECTOR ${String(state.run.sector).padStart(2, '0')}`, 1160, 40);
+  ctx.fillText(language === 'es' ? 'ZONA BUSTER' : 'BUSTER ZONE', 36, combatY + 30);
+  ctx.fillText(`${encounterName().toUpperCase()} // ${state.encounter?.kind?.toUpperCase() || 'CONTAINMENT'}`, 28, 34);
+  ctx.textAlign = 'right'; ctx.fillStyle = '#5e8499'; ctx.fillText(`SECTOR ${String(state.run.sector).padStart(2, '0')}`, WIDTH - 28, 34);
 
   ctx.lineCap = 'round';
   const lanes = state.encounterState?.splitLanes || 1;
@@ -254,7 +256,7 @@ function drawBackground(t) {
     ctx.strokeStyle = '#547284'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-7, -6); ctx.lineTo(1, 0); ctx.lineTo(-7, 6); ctx.stroke(); ctx.restore();
   }
 
-  ctx.textAlign = 'center'; ctx.fillStyle = '#7797a8'; ctx.font = '800 10px ui-monospace, monospace'; ctx.fillText(tr('arena.entry'), 130, 86);
+  const entry = pathAt(0); ctx.textAlign = 'center'; ctx.fillStyle = '#7797a8'; ctx.font = '800 10px ui-monospace, monospace'; ctx.fillText(tr('arena.entry'), entry.x, Math.max(24, entry.y - 26));
   const remaining = clamp(100 * (1 - state.head / PATH_LENGTH), 0, 100);
   const coreRatio = clamp((state.core?.hp || 0) / Math.max(1, state.core?.maxHp || 100), 0, 1);
   const danger = coreRatio <= .35;
@@ -504,7 +506,7 @@ function render(t, dt) {
   for (const l of labels) { l.life -= dt; l.y -= dt * (l.small ? 24 : 32); ctx.globalAlpha = Math.max(0, Math.min(1, l.life * 3)); ctx.fillStyle = l.color; ctx.font = l.small ? '800 11px ui-monospace, monospace' : 'bold 15px ui-monospace, monospace'; ctx.fillText(l.text, l.x, l.y); }
   ctx.globalAlpha = 1;
   particles = particles.filter(p => p.life > 0); arcs = arcs.filter(a => a.life > 0); rings = rings.filter(r => r.life > 0); labels = labels.filter(l => l.life > 0);
-  if (state.combo >= 2 && state.phase === 'playing') { ctx.textAlign = 'center'; ctx.fillStyle = '#d8ff9a'; ctx.font = '900 30px ui-monospace, monospace'; ctx.fillText(`×${Math.min(state.combo, 8)}`, 600, 435); ctx.fillStyle = '#8ba781'; ctx.font = '11px ui-monospace, monospace'; ctx.fillText(language === 'es' ? 'ROTURAS EN CADENA' : 'CHAIN BREAKS', 600, 455); }
+  if (state.combo >= 2 && state.phase === 'playing') { ctx.textAlign = 'center'; ctx.fillStyle = '#d8ff9a'; ctx.font = '900 30px ui-monospace, monospace'; ctx.fillText(`×${Math.min(state.combo, 8)}`, WIDTH / 2, 745); ctx.fillStyle = '#8ba781'; ctx.font = '11px ui-monospace, monospace'; ctx.fillText(language === 'es' ? 'ROTURAS EN CADENA' : 'CHAIN BREAKS', WIDTH / 2, 765); }
   if (!isMobileViewport() && state.phase === 'playing' && state.ultimateCharge >= state.buster.ultimate.chargeMax) {
     ctx.save(); ctx.globalAlpha = .72; ctx.strokeStyle = '#b79cff'; ctx.lineWidth = 2; ctx.setLineDash([8, 7]); circle(pointer.x, pointer.y, state.buster.ultimate.radius); ctx.stroke(); ctx.setLineDash([]);
     ctx.fillStyle = 'rgba(173,145,255,.055)'; circle(pointer.x, pointer.y, state.buster.ultimate.radius); ctx.fill(); ctx.restore();
@@ -514,7 +516,7 @@ function render(t, dt) {
 function panel(html) { $('panel').innerHTML = html; $('overlay').hidden = false; resetInput(); $('panel').querySelector('button')?.focus({ preventScroll: true }); }
 function restart() {
   state = createGame(); startGame(state); particles = []; arcs = []; rings = []; labels = []; accumulator = 0;
-  pointer = { x: 600, y: 330 }; resetInput(); shown = ''; syncUI(); canvas.focus({ preventScroll: true });
+  pointer = { x: WIDTH / 2, y: 640 }; resetInput(); shown = ''; syncUI(); canvas.focus({ preventScroll: true });
 }
 function resume() { state.phase = 'playing'; shown = ''; accumulator = 0; resetInput(); syncUI(); canvas.focus({ preventScroll: true }); }
 function pause(help = false) {
@@ -534,7 +536,7 @@ function syncUI() {
     const es = language === 'es';
     const mutationName = mutation ? (es ? mutation.name : ({'plated-scales':'Plated Scales','unstable-glands':'Unstable Glands','overgrowth':'Overgrowth','frenzy':'Alpha Frenzy'}[mutation.id] || mutation.name)) : '';
     const mutationText = mutation ? (es ? mutation.text : ({'plated-scales':'Greenfang develops more armor and extra resistance.','unstable-glands':'More explosive segments appear and rupture harder.','overgrowth':'Greenfang regrows more body between sectors.','frenzy':'The creature advances faster near the nest.'}[mutation.id] || mutation.text)) : '';
-    panel(`<span class="run-tag">SECTOR ${state.run.sector} ${es ? 'LIMPIO' : 'CLEARED'}</span><p class="eyebrow">${es ? 'COMBINACIÓN DE EXPEDICIÓN' : 'EXPEDITION BUILD'}</p><h2>${es ? 'Elige tu mejora.' : 'Choose your upgrade.'}</h2><p class="intro">${es ? 'Tu combinación persiste hasta que termine la expedición.' : 'Your build persists until the expedition ends.'}${mutation ? ` Greenfang: <b>${mutationName}</b> — ${mutationText}` : ''}</p><div class="upgrade-grid">${state.choices.map((id, i) => { const u = UPGRADES.find(u => u.id === id), copy = upgradeCopy(u), rarity = UPGRADE_RARITY[id] || ['common','COMÚN','COMMON']; return `<button class="upgrade-card rarity-${rarity[0]}" style="--card-i:${i}" data-upgrade="${id}"><span class="rarity-tag">${es ? rarity[1] : rarity[2]}</span><span class="symbol" aria-hidden="true">${u.icon}</span><strong>${copy.name}</strong><p>${copy.text}</p><small>${es ? 'ELEGIR' : 'CHOOSE'} · ${i + 1}</small></button>`; }).join('')}</div>`);
+    panel(`<span class="run-tag">SECTOR ${state.run.sector} ${es ? 'LIMPIO' : 'CLEARED'}</span><p class="eyebrow">${es ? 'COMBINACIÓN DE EXPEDICIÓN' : 'EXPEDITION BUILD'}</p><h2>${es ? 'Elige tu mejora.' : 'Choose your upgrade.'}</h2><p class="intro">${es ? 'Tu combinación persiste hasta que termine la expedición.' : 'Your build persists until the expedition ends.'}${mutation ? ` Greenfang: <b>${mutationName}</b> — ${mutationText}` : ''}</p><div class="upgrade-grid">${state.choices.map((id, i) => { const u = UPGRADES.find(u => u.id === id), copy = upgradeCopy(u), rarity = UPGRADE_RARITY[id] || ['common','COMÚN','COMMON']; return `<button class="upgrade-card rarity-${rarity[0]} category-${u.category || 'general'}" style="--card-i:${i}" data-upgrade="${id}"><span class="card-tags"><span class="rarity-tag">${es ? rarity[1] : rarity[2]}</span><span class="category-tag">${u.category === 'ability' ? (es ? 'HABILIDAD' : 'ABILITY') : (es ? 'GENERAL' : 'GENERAL')}</span></span><span class="symbol" aria-hidden="true">${u.icon}</span><strong>${copy.name}</strong><p>${copy.text}</p><small>${es ? 'ELEGIR' : 'CHOOSE'} · ${i + 1}</small></button>`; }).join('')}</div>`);
     document.querySelectorAll('[data-upgrade]').forEach(b => b.onclick = () => select(b.dataset.upgrade));
   }
   if (state.phase === 'route') {
