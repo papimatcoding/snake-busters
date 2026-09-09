@@ -1,4 +1,12 @@
 const isPortraitMobile = () => matchMedia('(max-width: 680px)').matches;
+
+// Mobile layout uses !important display rules for its portrait grids. Preserve the
+// semantic contract of the HTML `hidden` attribute so only one app screen can
+// ever occupy the viewport at once.
+const navigationHotfix = document.createElement('style');
+navigationHotfix.textContent = '@media (max-width:680px){.app-screen[hidden]{display:none!important}}';
+document.head.appendChild(navigationHotfix);
+
 const canvas = document.getElementById('game');
 const movePad = document.querySelector('.mobile-controls');
 const attackPad = document.getElementById('mobile-attack');
