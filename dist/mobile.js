@@ -52,8 +52,8 @@ function fallbackAim(x, y, magnitude = 1) {
   }));
   return p;
 }
-function sendAim(x, y, magnitude = 1) {
-  return bridge()?.setAimVector?.(x, y, magnitude) || fallbackAim(x, y, magnitude);
+function sendAim(x, y, magnitude = 1, mode = 'basic') {
+  return bridge()?.setAimVector?.(x, y, magnitude, mode) || fallbackAim(x, y, magnitude);
 }
 function fallbackFireOnce() {
   const rect = canvas.getBoundingClientRect();
@@ -68,8 +68,8 @@ function fallbackFireOnce() {
 }
 function fireBasic(x, y, magnitude, travel = 0) {
   const api = bridge();
-  if (travel < 8) api?.autoAim?.();
-  else sendAim(x, y, magnitude);
+  if (travel < 8) api?.autoAim?.('basic');
+  else sendAim(x, y, magnitude, 'basic');
 
   if (api?.fireOnce) api.fireOnce();
   else fallbackFireOnce();
@@ -94,11 +94,9 @@ function bindStick(root, { onStart, onMove, onRelease, label, icon, preserve = f
 
   const update = event => {
     const rect = root.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const max = Math.max(24, Math.min(rect.width, rect.height) * .32);
-    let dx = event.clientX - cx;
-    let dy = event.clientY - cy;
+    const max = Math.max(30, Math.min(rect.width, rect.height) * .52);
+    let dx = event.clientX - start.x;
+    let dy = event.clientY - start.y;
     const raw = Math.hypot(dx, dy);
     const scale = raw > max ? max / raw : 1;
     dx *= scale;
@@ -117,8 +115,10 @@ function bindStick(root, { onStart, onMove, onRelease, label, icon, preserve = f
     start = { x: event.clientX, y: event.clientY };
     maxTravel = 0;
     try { root.setPointerCapture(pointerId); } catch {}
-    update(event);
-    onStart?.(vector.x, vector.y, vector.magnitude, event);
+    vector = { x: 0, y: 0, magnitude: 0 };
+    thumb.style.transform = 'translate(0px, 0px)';
+    root.classList.add('stick-active');
+    onStart?.(0, 0, 0, event);
   }, { capture: true });
 
   root.addEventListener('pointermove', event => {
@@ -150,13 +150,12 @@ if (movePad) {
   let movePointer = null;
   const thumb = moveStick.querySelector('.stick-thumb');
 
+  let moveOrigin = { x: 0, y: 0 };
   const updateMove = event => {
     const rect = moveStick.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const max = Math.max(28, Math.min(rect.width, rect.height) * .31);
-    let dx = event.clientX - cx;
-    let dy = event.clientY - cy;
+    const max = Math.max(32, Math.min(rect.width, rect.height) * .48);
+    let dx = event.clientX - moveOrigin.x;
+    let dy = event.clientY - moveOrigin.y;
     const raw = Math.hypot(dx, dy);
     const scale = raw > max ? max / raw : 1;
     dx *= scale;
@@ -170,8 +169,11 @@ if (movePad) {
     if (!isPortraitMobile()) return;
     event.preventDefault();
     movePointer = event.pointerId;
+    moveOrigin = { x: event.clientX, y: event.clientY };
     try { moveStick.setPointerCapture(movePointer); } catch {}
-    updateMove(event);
+    thumb.style.transform = 'translate(0px, 0px)';
+    moveStick.classList.add('stick-active');
+    clearMoveKeys();
   });
   moveStick.addEventListener('pointermove', event => {
     if (event.pointerId !== movePointer) return;
@@ -195,7 +197,7 @@ bindStick(attackPad, {
   icon: '⚡',
   onStart: () => attackPad.classList.add('primed'),
   onMove: (x, y, m) => {
-    if (m >= .12) sendAim(x, y, m);
+    if (m >= .08) sendAim(x, y, m, 'basic');
   },
   onRelease: (x, y, m, event, travel) => {
     attackPad.classList.remove('primed');
@@ -208,12 +210,13 @@ bindStick(abilityPad, {
   label: 'SOBRECARGA',
   icon: 'E',
   preserve: true,
-  onMove: (x, y, m) => { if (m >= .12) sendAim(x, y, m); },
+  onMove: (x, y, m) => { if (m >= .08) sendAim(x, y, m, 'ability'); },
   onRelease: (x, y, m, event, travel) => {
-    if (event.type !== 'pointerup' || travel < 6 || m < .12 || abilityPad.disabled) { bridge()?.endAim?.(); return; }
-    sendAim(x, y, m);
+    if (event.type !== 'pointerup' || abilityPad.disabled) { bridge()?.endAim?.(); return; }
+    if (travel < 8) bridge()?.autoAim?.('ability');
+    else sendAim(x, y, m, 'ability');
     abilityPad.click();
-    setTimeout(() => bridge()?.endAim?.(), 90);
+    setTimeout(() => bridge()?.endAim?.(), 70);
   },
 });
 
@@ -221,12 +224,13 @@ bindStick(ultimatePad, {
   label: 'TORMENTA',
   icon: 'Q',
   preserve: true,
-  onMove: (x, y, m) => { if (m >= .12) sendAim(x, y, m); },
+  onMove: (x, y, m) => { if (m >= .08) sendAim(x, y, m, 'ultimate'); },
   onRelease: (x, y, m, event, travel) => {
-    if (event.type !== 'pointerup' || travel < 6 || m < .12 || ultimatePad.disabled) { bridge()?.endAim?.(); return; }
-    sendAim(x, y, m);
+    if (event.type !== 'pointerup' || ultimatePad.disabled) { bridge()?.endAim?.(); return; }
+    if (travel < 8) bridge()?.autoAim?.('ultimate');
+    else sendAim(x, y, m, 'ultimate');
     ultimatePad.click();
-    setTimeout(() => bridge()?.endAim?.(), 90);
+    setTimeout(() => bridge()?.endAim?.(), 70);
   },
 });
 
@@ -265,4 +269,4 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-document.body.dataset.mobileControls = 'release-fire';
+document.body.dataset.mobileControls = 'floating-aim-assist';
