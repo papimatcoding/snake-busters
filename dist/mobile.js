@@ -112,6 +112,14 @@ bindStick(attackPad,{label:'ATAQUE',icon:'⚡',fireWhileHeld:true,onMove:(x,y,m)
 bindStick(abilityPad,{label:'SOBRECARGA',icon:'E',preserve:true,onMove:(x,y,m)=>sendAim(x,y,m),onRelease:(x,y,m)=>{if(m<.12||abilityPad.disabled)return;sendAim(x,y,m);abilityPad.click();}});
 bindStick(ultimatePad,{label:'TORMENTA',icon:'Q',preserve:true,onMove:(x,y,m)=>sendAim(x,y,m),onRelease:(x,y,m)=>{if(m<.12||ultimatePad.disabled)return;sendAim(x,y,m);ultimatePad.click();}});
 
+// A physical pointer gesture would also generate a browser click after pointerup.
+// The cast is already triggered on stick release, so swallow only that physical click.
+for (const skill of [abilityPad, ultimatePad]) {
+  skill?.addEventListener('click', event => {
+    if (isPortraitMobile() && event.detail > 0) { event.preventDefault(); event.stopImmediatePropagation(); }
+  }, { capture:true });
+}
+
 canvas?.addEventListener('pointerdown',event=>{if(!isPortraitMobile()||event.pointerType==='mouse')return;event.preventDefault();event.stopImmediatePropagation();},{capture:true});
 canvas?.addEventListener('pointermove',event=>{if(!isPortraitMobile()||event.pointerType==='mouse')return;event.preventDefault();event.stopImmediatePropagation();},{capture:true});
 document.getElementById('game-screen')?.addEventListener('touchmove',event=>{if(isPortraitMobile())event.preventDefault();},{passive:false});
