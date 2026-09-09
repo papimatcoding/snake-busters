@@ -1,4 +1,4 @@
-import { createGame, startGame, update, activateAbility, activateUltimate, chooseUpgrade, chooseRoute, getEncounter, MUTATIONS, ROUTES, pathAt, pathAtLane, PATH_LENGTH, UPGRADES, WIDTH, HEIGHT, STEP, clamp } from './engine.js';
+import { createGame, startGame, update, activateAbility, activateUltimate, chooseUpgrade, chooseRoute, getEncounter, MUTATIONS, ROUTES, pathAt, pathAtLane, PATH_LENGTH, UPGRADES, WIDTH, HEIGHT, STEP, clamp } from './engine.js?v=0.9.6';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game'), ctx = canvas.getContext('2d');
@@ -588,6 +588,7 @@ function syncHUD() {
   const coreHp = Math.max(0, state.core?.hp || 0), coreMax = Math.max(1, state.core?.maxHp || 100);
   const corePct = 100 * coreHp / coreMax;
   $('danger').value = corePct;
+  $('danger').dataset.state = corePct > 60 ? 'safe' : corePct > 30 ? 'warn' : 'danger';
   const coreStatus = $('core-status');
   coreStatus.textContent = `${Math.ceil(coreHp)} / ${coreMax}`;
   coreStatus.dataset.state = corePct > 60 ? 'safe' : corePct > 30 ? 'warn' : 'danger';
