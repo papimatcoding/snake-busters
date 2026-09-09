@@ -66,9 +66,9 @@ function fallbackFireOnce() {
     bubbles: true, pointerId: 8200, pointerType: 'mouse', button: 0, clientX: x, clientY: y,
   })), 34);
 }
-function fireBasic(x, y, magnitude) {
+function fireBasic(x, y, magnitude, travel = 0) {
   const api = bridge();
-  if (magnitude < .16) api?.autoAim?.();
+  if (travel < 8) api?.autoAim?.();
   else sendAim(x, y, magnitude);
 
   if (api?.fireOnce) api.fireOnce();
@@ -90,6 +90,7 @@ function bindStick(root, { onStart, onMove, onRelease, label, icon, preserve = f
   const thumb = addStickVisual(root, label, icon, preserve);
   let pointerId = null;
   let vector = { x: 0, y: 0, magnitude: 0 };
+  let start = { x: 0, y: 0 }, maxTravel = 0;
 
   const update = event => {
     const rect = root.getBoundingClientRect();
@@ -113,6 +114,8 @@ function bindStick(root, { onStart, onMove, onRelease, label, icon, preserve = f
     event.preventDefault();
     event.stopPropagation();
     pointerId = event.pointerId;
+    start = { x: event.clientX, y: event.clientY };
+    maxTravel = 0;
     try { root.setPointerCapture(pointerId); } catch {}
     update(event);
     onStart?.(vector.x, vector.y, vector.magnitude, event);
@@ -121,6 +124,7 @@ function bindStick(root, { onStart, onMove, onRelease, label, icon, preserve = f
   root.addEventListener('pointermove', event => {
     if (event.pointerId !== pointerId) return;
     event.preventDefault();
+    maxTravel = Math.max(maxTravel, Math.hypot(event.clientX - start.x, event.clientY - start.y));
     update(event);
   }, { capture: true });
 
@@ -132,7 +136,7 @@ function bindStick(root, { onStart, onMove, onRelease, label, icon, preserve = f
     pointerId = null;
     thumb.style.transform = 'translate(0px, 0px)';
     root.classList.remove('stick-active');
-    onRelease?.(released.x, released.y, released.magnitude, event);
+    onRelease?.(released.x, released.y, released.magnitude, event, maxTravel);
   };
 
   for (const type of ['pointerup','pointercancel','lostpointercapture']) {
@@ -193,10 +197,10 @@ bindStick(attackPad, {
   onMove: (x, y, m) => {
     if (m >= .12) sendAim(x, y, m);
   },
-  onRelease: (x, y, m, event) => {
+  onRelease: (x, y, m, event, travel) => {
     attackPad.classList.remove('primed');
     if (event.type !== 'pointerup') { bridge()?.endAim?.(); return; }
-    fireBasic(x, y, m);
+    fireBasic(x, y, m, travel);
   },
 });
 
@@ -205,8 +209,8 @@ bindStick(abilityPad, {
   icon: 'E',
   preserve: true,
   onMove: (x, y, m) => { if (m >= .12) sendAim(x, y, m); },
-  onRelease: (x, y, m, event) => {
-    if (event.type !== 'pointerup' || m < .12 || abilityPad.disabled) { bridge()?.endAim?.(); return; }
+  onRelease: (x, y, m, event, travel) => {
+    if (event.type !== 'pointerup' || travel < 6 || m < .12 || abilityPad.disabled) { bridge()?.endAim?.(); return; }
     sendAim(x, y, m);
     abilityPad.click();
     setTimeout(() => bridge()?.endAim?.(), 90);
@@ -218,8 +222,8 @@ bindStick(ultimatePad, {
   icon: 'Q',
   preserve: true,
   onMove: (x, y, m) => { if (m >= .12) sendAim(x, y, m); },
-  onRelease: (x, y, m, event) => {
-    if (event.type !== 'pointerup' || m < .12 || ultimatePad.disabled) { bridge()?.endAim?.(); return; }
+  onRelease: (x, y, m, event, travel) => {
+    if (event.type !== 'pointerup' || travel < 6 || m < .12 || ultimatePad.disabled) { bridge()?.endAim?.(); return; }
     sendAim(x, y, m);
     ultimatePad.click();
     setTimeout(() => bridge()?.endAim?.(), 90);
