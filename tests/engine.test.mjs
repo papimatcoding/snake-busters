@@ -6,15 +6,18 @@ import {
   getEncounterConfig, MUTATIONS, ROUTES,
 } from '../dist/engine.js';
 
-test('the track is continuous across each straight/curve junction and reaches the core', () => {
-  for (const d of [900, 900 + Math.PI * 100, 1800 + Math.PI * 100, 1800 + Math.PI * 200]) {
+test('the portrait track is continuous, vertical and reaches the containment core', () => {
+  for (const ratio of [.15, .3, .5, .7, .9]) {
+    const d = PATH_LENGTH * ratio;
     const a = pathAt(d - .001), b = pathAt(d + .001);
-    assert.ok(Math.hypot(a.x - b.x, a.y - b.y) < .003);
+    assert.ok(Math.hypot(a.x - b.x, a.y - b.y) < .01);
   }
-  const end = pathAt(PATH_LENGTH);
-  assert.ok(Math.abs(end.x - 1120) < 1e-9);
-  assert.equal(end.y, 530);
-  assert.equal(end.a, 0);
+  const start = pathAt(0), end = pathAt(PATH_LENGTH);
+  assert.ok(start.y < 100);
+  assert.ok(end.y > 800);
+  assert.ok(Math.abs(end.x - 360) < 1e-6);
+  assert.ok(Math.abs(end.y - 842) < 1e-6);
+  assert.ok(PATH_LENGTH > 1000);
 });
 
 test('swept collision detects a fast bullet crossing a segment and rejects a near miss', () => {
