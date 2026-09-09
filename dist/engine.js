@@ -735,7 +735,7 @@ export function update(s, dt, input = {}) {
     s.events.push({ type: 'shot', ammo: s.ammo, projectiles: count });
   }
 
-  const advance = (config.speed * config.speedMultiplier + s.sectorTime * config.accel) * ruleEffects.speed * dt;
+  const advance = (config.speed * config.speedMultiplier + s.sectorTime * config.accel) * ruleEffects.speed * .64 * dt;
   if (s.encounterState?.laneHeads) {
     s.encounterState.laneHeads = s.encounterState.laneHeads.map((head, lane) => head + advance * (1 + lane * .055));
     s.head = Math.max(...s.encounterState.laneHeads);
