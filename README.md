@@ -2,14 +2,16 @@
 
 Prototipo de action-roguelite para móvil. La dirección actual es **vertical / portrait**, con controles táctiles pensados desde móvil y combate inmediato. Seguimos desarrollándolo como HTML/CSS/JS estático para iterar rápido en navegador; si la dirección funciona, el siguiente salto será empaquetarlo como app Android para Play Store.
 
-## Estado actual — 0.9.2 · 9 septiembre 2026
+## Estado actual — 0.9.3 · 9 septiembre 2026
 
-### Hotfix de navegación móvil
+### Hotfix 0.9.3 — navegación robusta + cache busting
 
-- Se corrige un bug introducido en la segunda pasada de UI que impedía entrar correctamente al juego en móvil.
-- La causa era CSS: las reglas portrait usaban `display:grid!important` en las distintas pantallas y anulaban el atributo HTML `hidden`, haciendo que varias pantallas se renderizaran simultáneamente.
-- `dist/mobile.js` fuerza ahora `.app-screen[hidden]{display:none!important}` en móvil para preservar la navegación `inicio → lobby → mapa → partida`.
-- Este hotfix no cambia el motor ni revierte los joysticks twin-stick.
+- La navegación deja de depender de que `dist/mobile.js` llegue a ejecutarse correctamente.
+- `dist/index.html` incluye ahora `[hidden]{display:none!important}` directamente en el `<head>`, por lo que las pantallas ocultas no pueden volver a apilarse aunque falle la capa táctil.
+- CSS y JS se cargan con `?v=0.9.3` para evitar que GitHub Pages o el navegador reutilicen una copia vieja después de un deploy.
+- La pantalla inicial muestra **BUILD 0.9.3** de forma fija para identificar con certeza qué versión está probando el teléfono.
+- El workflow anterior de Pages sí terminó correctamente; el texto “VERSIÓN 0.8” era un literal antiguo del frontend y no indicaba qué commit estaba desplegado.
+- No se cambian mecánicas ni motor en este hotfix.
 
 ### Mobile portrait — segunda pasada de UI
 
@@ -63,12 +65,12 @@ Abrir `http://localhost:3000` desde el móvil en la misma red o usar GitHub Page
 
 ## Código
 
-- `dist/index.html`: shell de pantallas y HUD.
+- `dist/index.html`: shell de pantallas, regla crítica de `hidden`, build visible y versionado de assets.
 - `dist/style.css`: estilos base existentes.
 - `dist/mobile.css`: layout portrait y compactación completa de UI móvil.
 - `dist/engine.js`: simulación independiente del navegador.
 - `dist/game.js`: render Canvas, entrada base, audio y UI.
-- `dist/mobile.js`: capa twin-stick y hotfix de navegación móvil.
+- `dist/mobile.js`: capa twin-stick móvil.
 - `tests/engine.test.mjs`: pruebas de la simulación.
 - `.github/workflows/pages.yml`: validación/deploy de Pages.
 
@@ -96,7 +98,7 @@ La lógica de `engine.js` no se ha modificado en esta pasada. El entorno del asi
 
 ## Próximo paso al retomar
 
-**Repetir el test manual en móvil real empezando por el flujo completo `inicio → lobby → mapa → desplegar`.** Si ese recorrido vuelve a ser estable, evaluar:
+**Probar la build 0.9.3 en móvil real empezando por el flujo completo `inicio → lobby → mapa → desplegar`.** La pantalla inicial debe mostrar `BUILD 0.9.3`. Si ese recorrido es estable, evaluar:
 
 - comodidad y tamaño del joystick izquierdo,
 - precisión del joystick de ataque,
