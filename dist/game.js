@@ -9,6 +9,7 @@ const colors = { normal: '#c1fb60', armor: '#8cabff', volatile: '#ff9875' };
 let state = createGame(), last = 0, accumulator = 0, shown = 'ready', best = 0, bestSector = 0;
 let particles = [], arcs = [], labels = [], rings = [], shake = 0, announcementTime = 0, lobbyToastTime = 0;
 let pointer = { x: 600, y: 330 }, shooting = false, keys = new Set(), touchMoves = new Map();
+let mobileShotQueued = false, mobileAimActive = false, mobileAutoAimFlash = 0;
 let sound = false, audioContext, language = 'es';
 let runtimeError = '';
 window.addEventListener('error', event => {
@@ -27,7 +28,7 @@ try {
 
 const I18N = {
   es: {
-    'title.kicker':'EQUIPO DE CONTENCIÓN // VERSIÓN 0.8','title.line1':'ELLAS MUTAN.','title.line2':'NOSOTROS MÁS.','title.sub':'Entra en zonas infestadas, crea una combinación distinta en cada expedición y llega más lejos con tu escuadrón.','title.enter':'ENTRAR A LA BASE','title.local':'PROTOTIPO · TODO EL PROGRESO ACTUAL ES LOCAL','title.unit':'UNIDAD DE RESPUESTA','title.scan':'REGISTRO DE AMENAZA','title.target':'OBJETIVO','title.state':'ESTADO','title.mutating':'MUTANDO','title.classified':'SEÑAL BIOLÓGICA INESTABLE','title.noVisual':'VISUAL BLOQUEADO · DATOS DE CAMPO INCOMPLETOS',
+    'title.kicker':'EQUIPO DE CONTENCIÓN // BUILD 0.9.4','title.line1':'ELLAS MUTAN.','title.line2':'NOSOTROS MÁS.','title.sub':'Entra en zonas infestadas, crea una combinación distinta en cada expedición y llega más lejos con tu escuadrón.','title.enter':'ENTRAR A LA BASE','title.local':'PROTOTIPO · TODO EL PROGRESO ACTUAL ES LOCAL','title.unit':'UNIDAD DE RESPUESTA','title.scan':'REGISTRO DE AMENAZA','title.target':'OBJETIVO','title.state':'ESTADO','title.mutating':'MUTANDO','title.classified':'SEÑAL BIOLÓGICA INESTABLE','title.noVisual':'VISUAL BLOQUEADO · DATOS DE CAMPO INCOMPLETOS',
     'profile.rank':'NIVEL 1 · RECLUTA','nav.busters':'BUSTERS','nav.custom':'PERSONALIZAR','nav.cosmetics':'COSMÉTICOS','nav.shop':'TIENDA','nav.social':'SOCIAL','nav.party':'ESCUADRÓN','common.soon':'PRÓXIMAMENTE','common.play':'JUGAR','common.baseBack':'← BASE','common.start':'INICIO','common.locked':'BLOQUEADO',
     'hq.response1':'CONTROL DE','hq.response2':'BROTES','hq.active':'BROTE ACTIVO','hq.best':'MEJOR SECTOR','hq.threat':'AMENAZA','hq.low':'BAJA','hq.outbreak':'BROTE 01','hq.artPending':'ARTE DE PERSONAJE PENDIENTE','hq.selected':'BUSTER SELECCIONADO','hq.quote':'“Si brilla, conduce. Si conduce, revienta.”',
     'party.squad':'ESCUADRÓN','party.invite':'+ INVITAR','party.you':'TÚ','party.ready':'LISTO','party.target':'OBJETIVO COOPERATIVO','party.note':'La versión actual sigue siendo jugable en solitario. El escuadrón real se conectará sobre esta estructura.','party.mate':'COMPAÑERO','party.inviteShort':'INVITAR',
@@ -42,7 +43,7 @@ const I18N = {
     'toast.busters':'Volt es el Buster de referencia. El diseño final de personajes llegará después de cerrar los sistemas.','toast.locker':'Personalización preparada para aspectos, efectos, banners y gestos.','toast.shop':'La tienda todavía no tiene economía ni compras.','toast.social':'El escuadrón de 3 está preparado visualmente. El multijugador real vendrá después.'
   },
   en: {
-    'title.kicker':'CONTAINMENT CREW // BUILD 0.8','title.line1':'THEY MUTATE.','title.line2':'WE HIT HARDER.','title.sub':'Enter infested zones, build a different loadout every expedition and push farther with your squad.','title.enter':'ENTER HQ','title.local':'PROTOTYPE · CURRENT PROGRESS IS LOCAL ONLY','title.unit':'RESPONSE UNIT','title.scan':'THREAT LOG','title.target':'TARGET','title.state':'STATUS','title.mutating':'MUTATING','title.classified':'UNSTABLE BIOLOGICAL SIGNAL','title.noVisual':'VISUAL LOCKED · FIELD DATA INCOMPLETE',
+    'title.kicker':'CONTAINMENT CREW // BUILD 0.9.4','title.line1':'THEY MUTATE.','title.line2':'WE HIT HARDER.','title.sub':'Enter infested zones, build a different loadout every expedition and push farther with your squad.','title.enter':'ENTER HQ','title.local':'PROTOTYPE · CURRENT PROGRESS IS LOCAL ONLY','title.unit':'RESPONSE UNIT','title.scan':'THREAT LOG','title.target':'TARGET','title.state':'STATUS','title.mutating':'MUTATING','title.classified':'UNSTABLE BIOLOGICAL SIGNAL','title.noVisual':'VISUAL LOCKED · FIELD DATA INCOMPLETE',
     'profile.rank':'LEVEL 1 · RECRUIT','nav.busters':'BUSTERS','nav.custom':'CUSTOMIZE','nav.cosmetics':'COSMETICS','nav.shop':'SHOP','nav.social':'SOCIAL','nav.party':'SQUAD','common.soon':'COMING SOON','common.play':'PLAY','common.baseBack':'← HQ','common.start':'START','common.locked':'LOCKED',
     'hq.response1':'OUTBREAK','hq.response2':'CONTROL','hq.active':'ACTIVE OUTBREAK','hq.best':'BEST SECTOR','hq.threat':'THREAT','hq.low':'LOW','hq.outbreak':'OUTBREAK 01','hq.artPending':'CHARACTER ART PENDING','hq.selected':'SELECTED BUSTER','hq.quote':'“If it glows, it conducts. If it conducts, it blows.”',
     'party.squad':'SQUAD','party.invite':'+ INVITE','party.you':'YOU','party.ready':'READY','party.target':'CO-OP TARGET','party.note':'The current build is still playable solo. Real squad play will plug into this structure later.','party.mate':'TEAMMATE','party.inviteShort':'INVITE',
@@ -67,6 +68,14 @@ const UPGRADE_EN = {
   blast: ['Reactive Rupture', 'Every break deals 16 damage to adjacent segments.'],
   pulse: ['Capacitor', 'The ability recharges 25% faster and hits two additional targets.'],
   force: ['Shockwave', 'Breaks push 60% harder and the ability deals +25% damage.'],
+};
+const UPGRADE_RARITY = {
+  power: ['common', 'COMÚN', 'COMMON'],
+  rapid: ['uncommon', 'POCO COMÚN', 'UNCOMMON'],
+  chain: ['rare', 'RARA', 'RARE'],
+  pulse: ['rare', 'RARA', 'RARE'],
+  blast: ['epic', 'ÉPICA', 'EPIC'],
+  force: ['legendary', 'LEGENDARIA', 'LEGENDARY'],
 };
 function upgradeCopy(u) {
   if (language === 'es') return { name: u.name, text: u.text };
@@ -124,7 +133,7 @@ function tone(frequency, duration, volume = .035, type = 'sine') {
     o.connect(g); g.connect(audioContext.destination); o.start(); o.stop(audioContext.currentTime + duration);
   } catch { sound = false; $('sound').textContent = language === 'es' ? 'Sonido no disponible' : 'Sound unavailable'; }
 }
-function resetInput() { shooting = false; keys.clear(); touchMoves.clear(); }
+function resetInput() { shooting = false; mobileShotQueued = false; mobileAimActive = false; keys.clear(); touchMoves.clear(); }
 function announce(text) { $('announce').textContent = text; $('announce').classList.add('show'); announcementTime = 2; }
 function burst(x, y, color, count = 15) {
   for (let i = 0; i < (reduceMotion ? 4 : count); i++) {
@@ -425,6 +434,26 @@ function drawPlayer(t) {
   ctx.restore();
 
   if (state.phase === 'playing') {
+    if (mobileAimActive) {
+      ctx.save();
+      ctx.globalAlpha = .26;
+      ctx.strokeStyle = '#c7fb75';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 9]);
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(pointer.x, pointer.y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = .11;
+      ctx.fillStyle = '#c7fb75';
+      circle(pointer.x, pointer.y, 28); ctx.fill();
+      ctx.restore();
+    }
+    if (mobileAutoAimFlash > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, mobileAutoAimFlash * 4);
+      ctx.strokeStyle = '#f4ffbd'; ctx.lineWidth = 3;
+      circle(pointer.x, pointer.y, 22 + (1 - Math.min(1, mobileAutoAimFlash * 3)) * 8); ctx.stroke();
+      ctx.restore();
+    }
     ctx.strokeStyle = state.ammo > 0 ? '#9beafa' : '#ff9c82'; ctx.lineWidth = 1.5; circle(pointer.x, pointer.y, 10); ctx.stroke();
     line(pointer.x - 16, pointer.y, pointer.x - 7, pointer.y); line(pointer.x + 7, pointer.y, pointer.x + 16, pointer.y);
     line(pointer.x, pointer.y - 16, pointer.x, pointer.y - 7); line(pointer.x, pointer.y + 7, pointer.x, pointer.y + 16);
@@ -487,7 +516,7 @@ function syncUI() {
     const es = language === 'es';
     const mutationName = mutation ? (es ? mutation.name : ({'plated-scales':'Plated Scales','unstable-glands':'Unstable Glands','overgrowth':'Overgrowth','frenzy':'Alpha Frenzy'}[mutation.id] || mutation.name)) : '';
     const mutationText = mutation ? (es ? mutation.text : ({'plated-scales':'Greenfang develops more armor and extra resistance.','unstable-glands':'More explosive segments appear and rupture harder.','overgrowth':'Greenfang regrows more body between sectors.','frenzy':'The creature advances faster near the nest.'}[mutation.id] || mutation.text)) : '';
-    panel(`<span class="run-tag">SECTOR ${state.run.sector} ${es ? 'LIMPIO' : 'CLEARED'}</span><p class="eyebrow">${es ? 'COMBINACIÓN DE EXPEDICIÓN' : 'EXPEDITION BUILD'}</p><h2>${es ? 'Elige tu mejora.' : 'Choose your upgrade.'}</h2><p class="intro">${es ? 'Tu combinación persiste hasta que termine la expedición.' : 'Your build persists until the expedition ends.'}${mutation ? ` Greenfang: <b>${mutationName}</b> — ${mutationText}` : ''}</p><div class="upgrade-grid">${state.choices.map((id, i) => { const u = UPGRADES.find(u => u.id === id), copy = upgradeCopy(u); return `<button class="upgrade-card" data-upgrade="${id}"><span class="symbol" aria-hidden="true">${u.icon}</span><strong>${copy.name}</strong><p>${copy.text}</p><small>${es ? 'ELEGIR' : 'CHOOSE'} · ${i + 1}</small></button>`; }).join('')}</div>`);
+    panel(`<span class="run-tag">SECTOR ${state.run.sector} ${es ? 'LIMPIO' : 'CLEARED'}</span><p class="eyebrow">${es ? 'COMBINACIÓN DE EXPEDICIÓN' : 'EXPEDITION BUILD'}</p><h2>${es ? 'Elige tu mejora.' : 'Choose your upgrade.'}</h2><p class="intro">${es ? 'Tu combinación persiste hasta que termine la expedición.' : 'Your build persists until the expedition ends.'}${mutation ? ` Greenfang: <b>${mutationName}</b> — ${mutationText}` : ''}</p><div class="upgrade-grid">${state.choices.map((id, i) => { const u = UPGRADES.find(u => u.id === id), copy = upgradeCopy(u), rarity = UPGRADE_RARITY[id] || ['common','COMÚN','COMMON']; return `<button class="upgrade-card rarity-${rarity[0]}" style="--card-i:${i}" data-upgrade="${id}"><span class="rarity-tag">${es ? rarity[1] : rarity[2]}</span><span class="symbol" aria-hidden="true">${u.icon}</span><strong>${copy.name}</strong><p>${copy.text}</p><small>${es ? 'ELEGIR' : 'CHOOSE'} · ${i + 1}</small></button>`; }).join('')}</div>`);
     document.querySelectorAll('[data-upgrade]').forEach(b => b.onclick = () => select(b.dataset.upgrade));
   }
   if (state.phase === 'route') {
@@ -575,6 +604,48 @@ function toWorld(e) {
   const r = canvas.getBoundingClientRect(), scale = Math.min(r.width / WIDTH, r.height / HEIGHT);
   return { x: clamp((e.clientX - r.left - (r.width - WIDTH * scale) / 2) / scale, 0, WIDTH), y: clamp((e.clientY - r.top - (r.height - HEIGHT * scale) / 2) / scale, 0, HEIGHT) };
 }
+function setMobileAimVector(x, y, magnitude = 1) {
+  const len = Math.hypot(x, y);
+  if (len < .001) return { ...pointer };
+  const nx = x / len, ny = y / len;
+  const reach = 300 + 320 * clamp(magnitude, 0, 1);
+  pointer = {
+    x: clamp(state.player.x + nx * reach, 0, WIDTH),
+    y: clamp(state.player.y + ny * reach, 0, HEIGHT),
+  };
+  state.aim = { ...pointer };
+  mobileAimActive = true;
+  return { ...pointer };
+}
+function autoAimMobile() {
+  const candidates = [
+    ...state.segments.filter(seg => seg.d >= 0 && seg.hp > 0),
+    ...(state.objectives || []).filter(obj => obj.hp > 0),
+  ];
+  if (!candidates.length) return false;
+  let target = candidates[0], best = Infinity;
+  for (const candidate of candidates) {
+    const d = Math.hypot(candidate.x - state.player.x, candidate.y - state.player.y);
+    if (d < best) { best = d; target = candidate; }
+  }
+  pointer = { x: target.x, y: target.y };
+  state.aim = { ...pointer };
+  mobileAimActive = true;
+  mobileAutoAimFlash = .34;
+  return true;
+}
+function queueMobileShot() {
+  if (state.phase !== 'playing' || state.ammo <= 0) return false;
+  mobileShotQueued = true;
+  return true;
+}
+window.SnakeBustersMobileBridge = {
+  setAimVector: setMobileAimVector,
+  autoAim: autoAimMobile,
+  fireOnce: queueMobileShot,
+  endAim: () => { mobileAimActive = false; },
+  canFire: () => state.phase === 'playing' && state.ammo > 0,
+};
 canvas.addEventListener('pointermove', e => { pointer = toWorld(e); });
 canvas.addEventListener('pointerdown', e => {
   if (state.phase !== 'playing' || (e.pointerType === 'mouse' && e.button !== 0)) return;
@@ -660,10 +731,18 @@ function frame(now) {
     const input = {
       x: Number(keys.has('KeyD') || keys.has('ArrowRight') || moves.has('right')) - Number(keys.has('KeyA') || keys.has('ArrowLeft') || moves.has('left')),
       y: Number(keys.has('KeyS') || keys.has('ArrowDown') || moves.has('down')) - Number(keys.has('KeyW') || keys.has('ArrowUp') || moves.has('up')),
-      fire: shooting, aim: pointer,
+      fire: shooting || mobileShotQueued, aim: pointer,
     };
-    while (accumulator >= STEP) { update(state, STEP, input); accumulator -= STEP; if (state.phase !== 'playing') { accumulator = 0; break; } }
+    let consumedMobileShot = false;
+    while (accumulator >= STEP) {
+      update(state, STEP, input);
+      consumedMobileShot ||= mobileShotQueued;
+      accumulator -= STEP;
+      if (state.phase !== 'playing') { accumulator = 0; break; }
+    }
+    if (consumedMobileShot) mobileShotQueued = false;
   } else accumulator = 0;
+  if (mobileAutoAimFlash > 0) mobileAutoAimFlash = Math.max(0, mobileAutoAimFlash - dt);
   events(); syncUI(); render(now / 1000, state.phase === 'paused' ? 0 : dt);
   if (smokeMode) {
     const rect = canvas.getBoundingClientRect();
