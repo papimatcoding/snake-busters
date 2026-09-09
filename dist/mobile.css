@@ -424,3 +424,47 @@
   #danger[data-state="danger"]::-moz-progress-bar{background:#ff806f}
   .core-hud:has(#danger[data-state="danger"]){border-color:rgba(255,128,111,.48)!important;box-shadow:inset 0 0 16px rgba(255,96,80,.06)!important}
 }
+
+
+/* 0.9.7 portrait-native arena + upgrade families */
+@media (max-width:680px){
+  .game-arena{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    background:
+      radial-gradient(circle at 50% 78%,rgba(99,205,230,.07),transparent 36%),
+      linear-gradient(180deg,#061018,#081923)!important;
+  }
+  .game-arena canvas{
+    width:auto!important;
+    height:100%!important;
+    max-width:100%!important;
+    max-height:100%!important;
+    aspect-ratio:720/1120!important;
+    object-fit:contain!important;
+  }
+  .card-tags{
+    display:flex!important;
+    gap:4px!important;
+    flex-wrap:wrap!important;
+    margin-bottom:7px!important;
+  }
+  .upgrade-card .card-tags .rarity-tag{margin-bottom:0!important}
+  .category-tag{
+    display:inline-flex!important;
+    align-self:flex-start!important;
+    padding:3px 5px!important;
+    border:1px solid rgba(100,182,201,.28)!important;
+    border-radius:20px!important;
+    background:rgba(7,23,31,.58)!important;
+    color:#82cddd!important;
+    font:900 5.5px ui-monospace,monospace!important;
+    letter-spacing:.5px!important;
+  }
+  .category-ability .category-tag{
+    border-color:rgba(193,150,255,.38)!important;
+    color:#cfb5ff!important;
+    background:rgba(37,24,52,.52)!important;
+  }
+}
