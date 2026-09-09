@@ -2,7 +2,19 @@
 
 Prototipo de action-roguelite para móvil. La dirección actual es **vertical / portrait**, con controles táctiles pensados desde móvil y combate inmediato. Seguimos desarrollándolo como HTML/CSS/JS estático para iterar rápido en navegador; si la dirección funciona, el siguiente salto será empaquetarlo como app Android para Play Store.
 
-## Estado actual — 0.9.6 · 9 septiembre 2026
+## Estado actual — 0.9.7 · 9 septiembre 2026
+
+### Portrait combat foundation 0.9.7 — arena móvil nativa
+
+- El mundo lógico deja de ser 1200×740 horizontal y pasa a **720×1120 portrait**.
+- Greenfang entra desde arriba y recorre una **S vertical** hasta el núcleo de contención situado justo encima de la zona del Buster.
+- Volt se mueve ahora en una zona de combate inferior amplia diseñada alrededor de los dos pulgares, no en una franja horizontal heredada de PC.
+- El camino usa una curva Catmull-Rom muestreada por distancia para mantener movimiento suave y continuo de los segmentos.
+- Nidos, spawn, límites de movimiento, cámara lógica, combo y decoración del escenario se recolocan al nuevo mundo vertical.
+- El canvas móvil conserva la proporción 720:1120 y se centra dentro de la arena sin deformarse.
+- Las mejoras quedan preparadas en dos familias visibles: **GENERAL** y **HABILIDAD**.
+- Las mejoras actuales de daño/cadena/munición se clasifican como generales; Condensador y Onda de choque pasan a identificarse explícitamente como mejoras de Sobrecarga.
+- Esta build todavía no introduce el gran catálogo de mejoras de habilidad: el siguiente paso será añadir efectos transformativos como Tormenta en múltiples rondas.
 
 ### Aim & Core pass 0.9.6 — apuntado fluido + núcleo con vida
 
@@ -30,7 +42,7 @@ Prototipo de action-roguelite para móvil. La dirección actual es **vertical / 
 - Las mejoras reciben rarezas visuales: **común, poco común, rara, épica y legendaria**. Por ahora la rareza es presentación y no altera probabilidades ni balance.
 - Las cartas de mejora aparecen en secuencia con animación de escala/glint en lugar de mostrarse todas a la vez.
 - En móvil las tres opciones se presentan en una fila compacta para mantenerlas visibles simultáneamente sin scroll.
-- `BUILD 0.9.6` y `?v=0.9.6` identifican y fuerzan la carga de esta versión.
+- `BUILD 0.9.7` y `?v=0.9.7` identifican y fuerzan la carga de esta versión.
 
 ### Hotfix 0.9.3 — navegación robusta + cache busting
 
@@ -121,12 +133,12 @@ La lógica de `engine.js` no se ha modificado en esta pasada. El entorno del asi
 2. Los controles deben poder usarse con dos pulgares sin tocar la arena durante combate normal.
 3. Ninguna pantalla principal debe requerir scroll en un teléfono vertical razonable; si falta espacio se elimina información secundaria antes de superponer o reducir legibilidad.
 4. Mantener el motor independiente del DOM para facilitar una futura migración a Android/nativo u otro runtime.
-5. No rehacer todavía la geometría interna 1200×740 hasta validar que la nueva ergonomía twin-stick es la correcta.
+5. La geometría interna ya es portrait nativa 720×1120; cualquier encuentro nuevo debe diseñarse directamente para esa orientación.
 6. Mantener Volt y Greenfang como placeholders funcionales mientras cerramos controles, pacing y bucle de run.
 
 ## Próximo paso al retomar
 
-**Probar la build 0.9.6 en móvil real.** La pantalla inicial debe mostrar `BUILD 0.9.6`. Prioridades del test:
+**Probar la build 0.9.7 en móvil real.** La pantalla inicial debe mostrar `BUILD 0.9.7`. Prioridades del test:
 
 - comodidad y tamaño del joystick izquierdo,
 - precisión del joystick de ataque,
