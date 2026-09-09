@@ -27,6 +27,11 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      - name: Engine tests and syntax
+        run: |
+          npm test
+          npm run check
+
       - name: Browser smoke test
         shell: bash
         run: |
