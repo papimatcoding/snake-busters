@@ -5,11 +5,12 @@ const canvas = $('game'), ctx = canvas.getContext('2d');
 const dpr = Math.min(window.devicePixelRatio || 1, 2);
 canvas.width = WIDTH * dpr; canvas.height = HEIGHT * dpr;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isMobileViewport = () => matchMedia('(max-width: 680px)').matches;
 const colors = { normal: '#c1fb60', armor: '#8cabff', volatile: '#ff9875' };
 let state = createGame(), last = 0, accumulator = 0, shown = 'ready', best = 0, bestSector = 0;
 let particles = [], arcs = [], labels = [], rings = [], shake = 0, announcementTime = 0, lobbyToastTime = 0;
 let pointer = { x: 600, y: 330 }, shooting = false, keys = new Set(), touchMoves = new Map();
-let mobileShotQueued = false, mobileAimActive = false, mobileAutoAimFlash = 0;
+let mobileShotQueued = false, mobileAimActive = false, mobileAimKind = 'basic', mobileAutoAimFlash = 0;
 let sound = false, audioContext, language = 'es';
 let runtimeError = '';
 window.addEventListener('error', event => {
@@ -28,7 +29,7 @@ try {
 
 const I18N = {
   es: {
-    'title.kicker':'EQUIPO DE CONTENCIÓN // BUILD 0.9.5','title.line1':'ELLAS MUTAN.','title.line2':'NOSOTROS MÁS.','title.sub':'Entra en zonas infestadas, crea una combinación distinta en cada expedición y llega más lejos con tu escuadrón.','title.enter':'ENTRAR A LA BASE','title.local':'PROTOTIPO · TODO EL PROGRESO ACTUAL ES LOCAL','title.unit':'UNIDAD DE RESPUESTA','title.scan':'REGISTRO DE AMENAZA','title.target':'OBJETIVO','title.state':'ESTADO','title.mutating':'MUTANDO','title.classified':'SEÑAL BIOLÓGICA INESTABLE','title.noVisual':'VISUAL BLOQUEADO · DATOS DE CAMPO INCOMPLETOS',
+    'title.kicker':'EQUIPO DE CONTENCIÓN // BUILD 0.9.6','title.line1':'ELLAS MUTAN.','title.line2':'NOSOTROS MÁS.','title.sub':'Entra en zonas infestadas, crea una combinación distinta en cada expedición y llega más lejos con tu escuadrón.','title.enter':'ENTRAR A LA BASE','title.local':'PROTOTIPO · TODO EL PROGRESO ACTUAL ES LOCAL','title.unit':'UNIDAD DE RESPUESTA','title.scan':'REGISTRO DE AMENAZA','title.target':'OBJETIVO','title.state':'ESTADO','title.mutating':'MUTANDO','title.classified':'SEÑAL BIOLÓGICA INESTABLE','title.noVisual':'VISUAL BLOQUEADO · DATOS DE CAMPO INCOMPLETOS',
     'profile.rank':'NIVEL 1 · RECLUTA','nav.busters':'BUSTERS','nav.custom':'PERSONALIZAR','nav.cosmetics':'COSMÉTICOS','nav.shop':'TIENDA','nav.social':'SOCIAL','nav.party':'ESCUADRÓN','common.soon':'PRÓXIMAMENTE','common.play':'JUGAR','common.baseBack':'← BASE','common.start':'INICIO','common.locked':'BLOQUEADO',
     'hq.response1':'CONTROL DE','hq.response2':'BROTES','hq.active':'BROTE ACTIVO','hq.best':'MEJOR SECTOR','hq.threat':'AMENAZA','hq.low':'BAJA','hq.outbreak':'BROTE 01','hq.artPending':'ARTE DE PERSONAJE PENDIENTE','hq.selected':'BUSTER SELECCIONADO','hq.quote':'“Si brilla, conduce. Si conduce, revienta.”',
     'party.squad':'ESCUADRÓN','party.invite':'+ INVITAR','party.you':'TÚ','party.ready':'LISTO','party.target':'OBJETIVO COOPERATIVO','party.note':'La versión actual sigue siendo jugable en solitario. El escuadrón real se conectará sobre esta estructura.','party.mate':'COMPAÑERO','party.inviteShort':'INVITAR',
@@ -43,7 +44,7 @@ const I18N = {
     'toast.busters':'Volt es el Buster de referencia. El diseño final de personajes llegará después de cerrar los sistemas.','toast.locker':'Personalización preparada para aspectos, efectos, banners y gestos.','toast.shop':'La tienda todavía no tiene economía ni compras.','toast.social':'El escuadrón de 3 está preparado visualmente. El multijugador real vendrá después.'
   },
   en: {
-    'title.kicker':'CONTAINMENT CREW // BUILD 0.9.5','title.line1':'THEY MUTATE.','title.line2':'WE HIT HARDER.','title.sub':'Enter infested zones, build a different loadout every expedition and push farther with your squad.','title.enter':'ENTER HQ','title.local':'PROTOTYPE · CURRENT PROGRESS IS LOCAL ONLY','title.unit':'RESPONSE UNIT','title.scan':'THREAT LOG','title.target':'TARGET','title.state':'STATUS','title.mutating':'MUTATING','title.classified':'UNSTABLE BIOLOGICAL SIGNAL','title.noVisual':'VISUAL LOCKED · FIELD DATA INCOMPLETE',
+    'title.kicker':'CONTAINMENT CREW // BUILD 0.9.6','title.line1':'THEY MUTATE.','title.line2':'WE HIT HARDER.','title.sub':'Enter infested zones, build a different loadout every expedition and push farther with your squad.','title.enter':'ENTER HQ','title.local':'PROTOTYPE · CURRENT PROGRESS IS LOCAL ONLY','title.unit':'RESPONSE UNIT','title.scan':'THREAT LOG','title.target':'TARGET','title.state':'STATUS','title.mutating':'MUTATING','title.classified':'UNSTABLE BIOLOGICAL SIGNAL','title.noVisual':'VISUAL LOCKED · FIELD DATA INCOMPLETE',
     'profile.rank':'LEVEL 1 · RECRUIT','nav.busters':'BUSTERS','nav.custom':'CUSTOMIZE','nav.cosmetics':'COSMETICS','nav.shop':'SHOP','nav.social':'SOCIAL','nav.party':'SQUAD','common.soon':'COMING SOON','common.play':'PLAY','common.baseBack':'← HQ','common.start':'START','common.locked':'LOCKED',
     'hq.response1':'OUTBREAK','hq.response2':'CONTROL','hq.active':'ACTIVE OUTBREAK','hq.best':'BEST SECTOR','hq.threat':'THREAT','hq.low':'LOW','hq.outbreak':'OUTBREAK 01','hq.artPending':'CHARACTER ART PENDING','hq.selected':'SELECTED BUSTER','hq.quote':'“If it glows, it conducts. If it conducts, it blows.”',
     'party.squad':'SQUAD','party.invite':'+ INVITE','party.you':'YOU','party.ready':'READY','party.target':'CO-OP TARGET','party.note':'The current build is still playable solo. Real squad play will plug into this structure later.','party.mate':'TEAMMATE','party.inviteShort':'INVITE',
@@ -133,7 +134,7 @@ function tone(frequency, duration, volume = .035, type = 'sine') {
     o.connect(g); g.connect(audioContext.destination); o.start(); o.stop(audioContext.currentTime + duration);
   } catch { sound = false; $('sound').textContent = language === 'es' ? 'Sonido no disponible' : 'Sound unavailable'; }
 }
-function resetInput() { shooting = false; mobileShotQueued = false; mobileAimActive = false; keys.clear(); touchMoves.clear(); }
+function resetInput() { shooting = false; mobileShotQueued = false; mobileAimActive = false; mobileAimKind = 'basic'; keys.clear(); touchMoves.clear(); }
 function announce(text) { $('announce').textContent = text; $('announce').classList.add('show'); announcementTime = 2; }
 function burst(x, y, color, count = 15) {
   for (let i = 0; i < (reduceMotion ? 4 : count); i++) {
@@ -160,6 +161,16 @@ function events() {
     if (e.type === 'venom-telegraph') tone(210, .08, .018, 'triangle');
     if (e.type === 'venom-active') { rings.push({ x:e.x, y:e.y, life:.34, color:'#b7ed6d', venom:true, radius:e.radius }); tone(110, .18, .025, 'sawtooth'); }
     if (e.type === 'venom-hit') { shake = reduceMotion ? 0 : 6; burst(e.x, e.y, '#b7ed6d', 16); labels.push({ x:e.x, y:e.y-24, text:language === 'es' ? 'VENENO' : 'VENOM', life:.65, color:'#dfff9b' }); }
+    if (e.type === 'core-hit') {
+      const core = pathAt(PATH_LENGTH);
+      shake = reduceMotion ? 0 : 11;
+      burst(core.x, core.y, '#ff8d78', 28);
+      rings.push({ x:core.x, y:core.y, life:.5, color:'#ff8d78', explosive:true });
+      labels.push({ x:core.x, y:core.y-52, text:`-${e.amount} CORE`, life:.85, color:'#ffb09f' });
+      tone(78, .35, .055, 'sawtooth');
+      if (e.hp <= e.maxHp * .5) announce(language === 'es' ? `NÚCLEO ${Math.ceil(e.hp)} / ${e.maxHp}` : `CORE ${Math.ceil(e.hp)} / ${e.maxHp}`);
+    }
+    if (e.type === 'core-destroyed') announce(language === 'es' ? 'NÚCLEO DESTRUIDO' : 'CORE DESTROYED');
     if (e.type === 'hunt-complete') announce(language === 'es' ? 'CAZA COMPLETADA · GREENFANG REPELIDA' : 'HUNT COMPLETE · GREENFANG DRIVEN OFF');
     if (e.type === 'hunt-escaped') announce(language === 'es' ? 'GREENFANG HA ESCAPADO' : 'GREENFANG ESCAPED');
     if (e.type === 'objective-hit') { burst(e.x, e.y, '#b9e973', 3); labels.push({ x:e.x, y:e.y-24, text:`-${Math.max(1,Math.round(e.amount))}`, life:.42, color:'#dfffa4', small:true }); }
@@ -245,18 +256,23 @@ function drawBackground(t) {
 
   ctx.textAlign = 'center'; ctx.fillStyle = '#7797a8'; ctx.font = '800 10px ui-monospace, monospace'; ctx.fillText(tr('arena.entry'), 130, 86);
   const remaining = clamp(100 * (1 - state.head / PATH_LENGTH), 0, 100);
-  const danger = remaining < 22;
+  const coreRatio = clamp((state.core?.hp || 0) / Math.max(1, state.core?.maxHp || 100), 0, 1);
+  const danger = coreRatio <= .35;
   const p = pathAt(PATH_LENGTH);
   ctx.save(); ctx.translate(p.x, p.y);
-  ctx.shadowColor = danger ? '#ff6d62' : '#73dafa'; ctx.shadowBlur = danger ? 18 + pulse * 12 : 10;
-  ctx.strokeStyle = danger ? '#ff796d' : '#75cde2'; ctx.lineWidth = 4; circle(0, 0, 37); ctx.stroke();
+  const coreFlash = state.core?.flash > 0;
+  ctx.shadowColor = danger || coreFlash ? '#ff6d62' : '#73dafa';
+  ctx.shadowBlur = coreFlash ? 28 : danger ? 18 + pulse * 12 : 10;
+  ctx.strokeStyle = danger || coreFlash ? '#ff796d' : '#75cde2'; ctx.lineWidth = 4; circle(0, 0, 37); ctx.stroke();
   ctx.rotate(reduceMotion ? 0 : t * .4); polygon(0, 0, 25, 6); ctx.fillStyle = danger ? '#3f2629' : '#193746'; ctx.fill(); ctx.stroke();
   ctx.rotate(reduceMotion ? 0 : -t * .8); polygon(0, 0, 14, 4, Math.PI / 4); ctx.fillStyle = danger ? '#ff8b75' : '#b9f5ff'; ctx.fill();
   ctx.restore();
-  ctx.fillStyle = danger ? '#ff8c7f' : '#a2eaf4'; ctx.font = '900 11px ui-monospace, monospace'; ctx.fillText(tr('arena.core'), p.x, p.y - 54);
+  ctx.fillStyle = danger ? '#ff8c7f' : '#a2eaf4'; ctx.font = '900 11px ui-monospace, monospace'; ctx.fillText(tr('arena.core'), p.x, p.y - 58);
+  ctx.font = '900 9px ui-monospace, monospace'; ctx.fillStyle = danger ? '#ff9f91' : '#83b8c7';
+  ctx.fillText(`${Math.ceil(state.core?.hp || 0)} / ${state.core?.maxHp || 100}`, p.x, p.y - 44);
 
   if (danger && state.phase === 'playing') {
-    ctx.strokeStyle = `rgba(255,105,89,${.20 + pulse * .22})`; ctx.lineWidth = 7; ctx.strokeRect(4, 4, WIDTH - 8, HEIGHT - 8);
+    ctx.strokeStyle = `rgba(255,105,89,${.16 + pulse * .18})`; ctx.lineWidth = 5; ctx.strokeRect(4, 4, WIDTH - 8, HEIGHT - 8);
   }
 }
 function drawHazards(t) {
@@ -434,29 +450,31 @@ function drawPlayer(t) {
   ctx.restore();
 
   if (state.phase === 'playing') {
-    if (mobileAimActive) {
-      ctx.save();
-      ctx.globalAlpha = .26;
-      ctx.strokeStyle = '#c7fb75';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([8, 9]);
-      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(pointer.x, pointer.y); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.globalAlpha = .11;
-      ctx.fillStyle = '#c7fb75';
-      circle(pointer.x, pointer.y, 28); ctx.fill();
-      ctx.restore();
+    if (isMobileViewport()) {
+      if (mobileAimActive && mobileAimKind === 'basic') {
+        ctx.save();
+        ctx.globalAlpha = .28;
+        ctx.strokeStyle = '#c7fb75';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 11]);
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(pointer.x, pointer.y); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = .62;
+        ctx.fillStyle = state.ammo > 0 ? '#d7ff91' : '#ff9c82';
+        circle(pointer.x, pointer.y, 4.5); ctx.fill();
+        if (mobileAutoAimFlash > 0) {
+          ctx.globalAlpha = Math.min(.7, mobileAutoAimFlash * 2.5);
+          ctx.strokeStyle = '#efffbd';
+          ctx.lineWidth = 2;
+          circle(pointer.x, pointer.y, 13); ctx.stroke();
+        }
+        ctx.restore();
+      }
+    } else {
+      ctx.strokeStyle = state.ammo > 0 ? '#9beafa' : '#ff9c82'; ctx.lineWidth = 1.5; circle(pointer.x, pointer.y, 10); ctx.stroke();
+      line(pointer.x - 16, pointer.y, pointer.x - 7, pointer.y); line(pointer.x + 7, pointer.y, pointer.x + 16, pointer.y);
+      line(pointer.x, pointer.y - 16, pointer.x, pointer.y - 7); line(pointer.x, pointer.y + 7, pointer.x, pointer.y + 16);
     }
-    if (mobileAutoAimFlash > 0) {
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, mobileAutoAimFlash * 4);
-      ctx.strokeStyle = '#f4ffbd'; ctx.lineWidth = 3;
-      circle(pointer.x, pointer.y, 22 + (1 - Math.min(1, mobileAutoAimFlash * 3)) * 8); ctx.stroke();
-      ctx.restore();
-    }
-    ctx.strokeStyle = state.ammo > 0 ? '#9beafa' : '#ff9c82'; ctx.lineWidth = 1.5; circle(pointer.x, pointer.y, 10); ctx.stroke();
-    line(pointer.x - 16, pointer.y, pointer.x - 7, pointer.y); line(pointer.x + 7, pointer.y, pointer.x + 16, pointer.y);
-    line(pointer.x, pointer.y - 16, pointer.x, pointer.y - 7); line(pointer.x, pointer.y + 7, pointer.x, pointer.y + 16);
   }
 }
 function render(t, dt) {
@@ -487,7 +505,7 @@ function render(t, dt) {
   ctx.globalAlpha = 1;
   particles = particles.filter(p => p.life > 0); arcs = arcs.filter(a => a.life > 0); rings = rings.filter(r => r.life > 0); labels = labels.filter(l => l.life > 0);
   if (state.combo >= 2 && state.phase === 'playing') { ctx.textAlign = 'center'; ctx.fillStyle = '#d8ff9a'; ctx.font = '900 30px ui-monospace, monospace'; ctx.fillText(`×${Math.min(state.combo, 8)}`, 600, 435); ctx.fillStyle = '#8ba781'; ctx.font = '11px ui-monospace, monospace'; ctx.fillText(language === 'es' ? 'ROTURAS EN CADENA' : 'CHAIN BREAKS', 600, 455); }
-  if (state.phase === 'playing' && state.ultimateCharge >= state.buster.ultimate.chargeMax) {
+  if (!isMobileViewport() && state.phase === 'playing' && state.ultimateCharge >= state.buster.ultimate.chargeMax) {
     ctx.save(); ctx.globalAlpha = .72; ctx.strokeStyle = '#b79cff'; ctx.lineWidth = 2; ctx.setLineDash([8, 7]); circle(pointer.x, pointer.y, state.buster.ultimate.radius); ctx.stroke(); ctx.setLineDash([]);
     ctx.fillStyle = 'rgba(173,145,255,.055)'; circle(pointer.x, pointer.y, state.buster.ultimate.radius); ctx.fill(); ctx.restore();
   }
@@ -567,10 +585,12 @@ function syncHUD() {
   }
   const remaining = clamp(100 * (1 - state.head / PATH_LENGTH), 0, 100);
   $('distance').textContent = language === 'es' ? `${Math.ceil(remaining)} % DE MARGEN` : `${Math.ceil(remaining)} % MARGIN`;
-  $('danger').value = remaining;
+  const coreHp = Math.max(0, state.core?.hp || 0), coreMax = Math.max(1, state.core?.maxHp || 100);
+  const corePct = 100 * coreHp / coreMax;
+  $('danger').value = corePct;
   const coreStatus = $('core-status');
-  coreStatus.textContent = remaining > 45 ? tr('status.safe') : remaining > 20 ? tr('status.warn') : tr('status.danger');
-  coreStatus.dataset.state = remaining > 45 ? 'safe' : remaining > 20 ? 'warn' : 'danger';
+  coreStatus.textContent = `${Math.ceil(coreHp)} / ${coreMax}`;
+  coreStatus.dataset.state = corePct > 60 ? 'safe' : corePct > 30 ? 'warn' : 'danger';
 
   const ammo = $('ammo'), ammoCells = [...ammo.children];
   ammoCells.forEach((cell, i) => {
@@ -604,34 +624,89 @@ function toWorld(e) {
   const r = canvas.getBoundingClientRect(), scale = Math.min(r.width / WIDTH, r.height / HEIGHT);
   return { x: clamp((e.clientX - r.left - (r.width - WIDTH * scale) / 2) / scale, 0, WIDTH), y: clamp((e.clientY - r.top - (r.height - HEIGHT * scale) / 2) / scale, 0, HEIGHT) };
 }
-function setMobileAimVector(x, y, magnitude = 1) {
+function mobileAimCandidates(mode = 'basic') {
+  if (mode === 'basic') {
+    return [
+      ...state.segments.filter(seg => seg.d >= 0 && seg.hp > 0),
+      ...(state.objectives || []).filter(obj => obj.hp > 0),
+    ];
+  }
+  return state.segments.filter(seg => seg.d >= 0 && seg.hp > 0);
+}
+function bestUltimateTarget(candidates) {
+  const radius = state.buster.ultimate.radius;
+  let best = null, bestScore = -Infinity;
+  for (const candidate of candidates) {
+    const hits = candidates.filter(other => Math.hypot(other.x - candidate.x, other.y - candidate.y) <= radius).length;
+    const threat = candidate.d || 0;
+    const distance = Math.hypot(candidate.x - state.player.x, candidate.y - state.player.y);
+    const score = hits * 10000 + threat - distance * .08;
+    if (score > bestScore) { bestScore = score; best = candidate; }
+  }
+  return best;
+}
+function assistTargetForVector(nx, ny, mode = 'basic') {
+  const candidates = mobileAimCandidates(mode);
+  let best = null, bestScore = Infinity;
+  const cone = mode === 'ultimate' ? .38 : mode === 'ability' ? .32 : .25;
+  for (const candidate of candidates) {
+    const dx = candidate.x - state.player.x, dy = candidate.y - state.player.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < 1) continue;
+    const tx = dx / distance, ty = dy / distance;
+    const angle = Math.acos(clamp(nx * tx + ny * ty, -1, 1));
+    if (angle > cone) continue;
+    const score = angle * 900 + distance * .025 - (candidate.d || 0) * .004;
+    if (score < bestScore) { bestScore = score; best = { candidate, angle, cone }; }
+  }
+  return best;
+}
+function setMobileAimVector(x, y, magnitude = 1, mode = 'basic') {
   const len = Math.hypot(x, y);
   if (len < .001) return { ...pointer };
   const nx = x / len, ny = y / len;
-  const reach = 300 + 320 * clamp(magnitude, 0, 1);
-  pointer = {
+  const reach = 260 + 420 * clamp(magnitude, 0, 1);
+  let target = {
     x: clamp(state.player.x + nx * reach, 0, WIDTH),
     y: clamp(state.player.y + ny * reach, 0, HEIGHT),
   };
+  const assist = assistTargetForVector(nx, ny, mode);
+  if (assist) {
+    const strength = clamp(.72 * (1 - assist.angle / assist.cone) + .16, .18, .82);
+    target = {
+      x: target.x * (1 - strength) + assist.candidate.x * strength,
+      y: target.y * (1 - strength) + assist.candidate.y * strength,
+    };
+  }
+  const smooth = mobileAimActive && mobileAimKind === mode ? .58 : 1;
+  pointer = {
+    x: clamp(pointer.x + (target.x - pointer.x) * smooth, 0, WIDTH),
+    y: clamp(pointer.y + (target.y - pointer.y) * smooth, 0, HEIGHT),
+  };
   state.aim = { ...pointer };
   mobileAimActive = true;
+  mobileAimKind = mode;
   return { ...pointer };
 }
-function autoAimMobile() {
-  const candidates = [
-    ...state.segments.filter(seg => seg.d >= 0 && seg.hp > 0),
-    ...(state.objectives || []).filter(obj => obj.hp > 0),
-  ];
+function autoAimMobile(mode = 'basic') {
+  const candidates = mobileAimCandidates(mode);
   if (!candidates.length) return false;
-  let target = candidates[0], best = Infinity;
-  for (const candidate of candidates) {
-    const d = Math.hypot(candidate.x - state.player.x, candidate.y - state.player.y);
-    if (d < best) { best = d; target = candidate; }
+  let target;
+  if (mode === 'ultimate') {
+    target = bestUltimateTarget(candidates);
+  } else {
+    target = [...candidates].sort((a, b) => {
+      const da = Math.hypot(a.x - state.player.x, a.y - state.player.y);
+      const db = Math.hypot(b.x - state.player.x, b.y - state.player.y);
+      return da - db || (b.d || 0) - (a.d || 0);
+    })[0];
   }
+  if (!target) return false;
   pointer = { x: target.x, y: target.y };
   state.aim = { ...pointer };
   mobileAimActive = true;
-  mobileAutoAimFlash = .34;
+  mobileAimKind = mode;
+  mobileAutoAimFlash = mode === 'basic' ? .34 : 0;
   return true;
 }
 function queueMobileShot() {
