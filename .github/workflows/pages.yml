@@ -68,6 +68,8 @@ jobs:
           "$BROWSER" --headless --no-sandbox --disable-gpu --window-size=771,493 --virtual-time-budget=1200 --screenshot=/tmp/snake-busters-lobby.png "http://127.0.0.1:3000/?preview=lobby"
           "$BROWSER" --headless --no-sandbox --disable-gpu --window-size=771,493 --virtual-time-budget=1200 --screenshot=/tmp/snake-busters-outbreak.png "http://127.0.0.1:3000/?preview=outbreak"
           "$BROWSER" --headless --no-sandbox --disable-gpu --window-size=771,493 --virtual-time-budget=2600 --screenshot=/tmp/snake-busters-game.png "http://127.0.0.1:3000/?smoke=1"
+          "$BROWSER" --headless --no-sandbox --disable-gpu --window-size=390,844 --virtual-time-budget=1200 --screenshot=/tmp/snake-busters-mobile-title.png "http://127.0.0.1:3000/"
+          "$BROWSER" --headless --no-sandbox --disable-gpu --window-size=390,844 --virtual-time-budget=1500 --screenshot=/tmp/snake-busters-mobile-game.png "http://127.0.0.1:3000/?preview=game"
 
       - name: Upload visual review screenshots
         uses: actions/upload-artifact@v4
