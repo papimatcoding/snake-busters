@@ -412,3 +412,15 @@
   .upgrade-card,.route-card{animation:none!important;opacity:1!important;transform:none!important}
   .upgrade-card:after{display:none!important}
 }
+
+
+/* 0.9.6 containment core health feedback */
+@media (max-width:680px){
+  #danger[data-state="safe"]::-webkit-progress-value{background:#aedd65}
+  #danger[data-state="warn"]::-webkit-progress-value{background:#efc467}
+  #danger[data-state="danger"]::-webkit-progress-value{background:#ff806f}
+  #danger[data-state="safe"]::-moz-progress-bar{background:#aedd65}
+  #danger[data-state="warn"]::-moz-progress-bar{background:#efc467}
+  #danger[data-state="danger"]::-moz-progress-bar{background:#ff806f}
+  .core-hud:has(#danger[data-state="danger"]){border-color:rgba(255,128,111,.48)!important;box-shadow:inset 0 0 16px rgba(255,96,80,.06)!important}
+}
