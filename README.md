@@ -2,9 +2,24 @@
 
 Prototipo de action-roguelite para móvil. La dirección actual es **vertical / portrait**, con controles táctiles pensados desde móvil y combate inmediato. Seguimos desarrollándolo como HTML/CSS/JS estático para iterar rápido en navegador; si la dirección funciona, el siguiente salto será empaquetarlo como app Android para Play Store.
 
-## Estado actual — 0.9.5 · 9 septiembre 2026
+## Estado actual — 0.9.6 · 9 septiembre 2026
 
-### Mobile polish 0.9.5 — controles, auto-aim y mejoras
+### Aim & Core pass 0.9.6 — apuntado fluido + núcleo con vida
+
+- Los joysticks móviles pasan a comportamiento **flotante**: el punto donde apoyas el dedo se convierte en el origen del gesto, eliminando el salto inicial provocado por medir desde el centro fijo del botón.
+- El apuntado manual añade **asistencia angular suave** hacia objetivos cercanos a la dirección elegida, sin convertir el arrastre en auto-aim completo.
+- El básico mantiene `apuntar → soltar → una carga`; toque corto = auto-aim.
+- **Sobrecarga** y **Tormenta** también tienen auto-aim con toque corto. Arrastrar conserva apuntado manual asistido.
+- El auto-aim de Tormenta busca el grupo de segmentos con mejor concentración dentro de su AOE.
+- En móvil se eliminan las mirillas permanentes de habilidad/ultimate y el círculo AOE de Tormenta cargada. El básico conserva solo una guía sutil de dirección.
+- El núcleo de contención tiene ahora **100 HP persistentes durante la expedición**. Una brecha ya no termina la partida inmediatamente.
+- Cada impacto al núcleo le quita vida y repele a Greenfang una distancia considerable, creando una ventana real para remontar.
+- El daño de brecha aumenta ligeramente por sector y por tipo de segmento que alcanza el núcleo.
+- El HUD del núcleo muestra `HP / HP máx.` y cambia de estado visual según la vida restante; el porcentaje de margen de Greenfang se mantiene como información secundaria.
+- Se añade test específico para múltiples brechas y destrucción final del núcleo.
+- `engine.js` también usa cache busting en esta build para garantizar que Pages cargue la nueva lógica.
+
+### Mobile polish 0.9.6 — controles, auto-aim y mejoras
 
 - El básico móvil deja de disparar mientras se arrastra: ahora **se apunta primero y se dispara una sola carga al soltar**.
 - Un toque corto sobre el stick de ataque activa **auto-aim** hacia el objetivo cercano y dispara una carga.
@@ -15,7 +30,7 @@ Prototipo de action-roguelite para móvil. La dirección actual es **vertical / 
 - Las mejoras reciben rarezas visuales: **común, poco común, rara, épica y legendaria**. Por ahora la rareza es presentación y no altera probabilidades ni balance.
 - Las cartas de mejora aparecen en secuencia con animación de escala/glint en lugar de mostrarse todas a la vez.
 - En móvil las tres opciones se presentan en una fila compacta para mantenerlas visibles simultáneamente sin scroll.
-- `BUILD 0.9.5` y `?v=0.9.5` identifican y fuerzan la carga de esta versión.
+- `BUILD 0.9.6` y `?v=0.9.6` identifican y fuerzan la carga de esta versión.
 
 ### Hotfix 0.9.3 — navegación robusta + cache busting
 
@@ -111,12 +126,14 @@ La lógica de `engine.js` no se ha modificado en esta pasada. El entorno del asi
 
 ## Próximo paso al retomar
 
-**Probar la build 0.9.5 en móvil real.** La pantalla inicial debe mostrar `BUILD 0.9.5`. Prioridades del test:
+**Probar la build 0.9.6 en móvil real.** La pantalla inicial debe mostrar `BUILD 0.9.6`. Prioridades del test:
 
 - comodidad y tamaño del joystick izquierdo,
 - precisión del joystick de ataque,
-- si apuntar y disparar al soltar elimina los disparos accidentales,
-- si el toque corto con auto-aim elige objetivos de forma natural,
+- si el joystick flotante se siente preciso desde cualquier punto del botón,
+- si la asistencia angular ayuda sin robarte el control,
+- si el auto-aim de básico, Sobrecarga y Tormenta elige objetivos de forma natural,
+- si 100 HP de núcleo dan margen suficiente sin volver la partida demasiado fácil,
 - colocación de Sobrecarga y Tormenta,
 - posibles cortes o solapes restantes,
 - tamaño útil de la arena,
