@@ -89,6 +89,36 @@ test('Volt basic, ability and ultimate are separate runtime systems', () => {
   assert.equal(activateUltimate(s), false);
 });
 
+
+test('the containment core survives breaches until its HP reaches zero', () => {
+  const s = createGame();
+  startGame(s);
+  const initialHp = s.core.hp;
+
+  s.head = PATH_LENGTH + 5;
+  if (s.encounterState?.laneHeads) s.encounterState.laneHeads = s.encounterState.laneHeads.map(() => PATH_LENGTH + 5);
+  placeSegments(s);
+  update(s, STEP);
+
+  assert.equal(s.phase, 'playing');
+  assert.ok(s.core.hp < initialHp);
+  assert.ok(s.core.hp > 0);
+  assert.ok(s.head < PATH_LENGTH);
+  assert.ok(s.events.some(e => e.type === 'core-hit'));
+
+  for (let breach = 0; breach < 10 && s.phase === 'playing'; breach++) {
+    s.core.hitCooldown = 0;
+    s.head = PATH_LENGTH + 5;
+    if (s.encounterState?.laneHeads) s.encounterState.laneHeads = s.encounterState.laneHeads.map(() => PATH_LENGTH + 5);
+    placeSegments(s);
+    update(s, STEP);
+  }
+
+  assert.equal(s.phase, 'lost');
+  assert.equal(s.core.hp, 0);
+  assert.ok(s.events.some(e => e.type === 'core-destroyed'));
+});
+
 test('Volt spends one ammo charge to fire a three-ray Tesla Trident volley', () => {
   const s = createGame();
   startGame(s);
