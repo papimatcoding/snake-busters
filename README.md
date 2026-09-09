@@ -2,7 +2,20 @@
 
 Prototipo de action-roguelite para móvil. La dirección actual es **vertical / portrait**, con controles táctiles pensados desde móvil y combate inmediato. Seguimos desarrollándolo como HTML/CSS/JS estático para iterar rápido en navegador; si la dirección funciona, el siguiente salto será empaquetarlo como app Android para Play Store.
 
-## Estado actual — 0.9.3 · 9 septiembre 2026
+## Estado actual — 0.9.4 · 9 septiembre 2026
+
+### Mobile polish 0.9.4 — controles, auto-aim y mejoras
+
+- El básico móvil deja de disparar mientras se arrastra: ahora **se apunta primero y se dispara una sola carga al soltar**.
+- Un toque corto sobre el stick de ataque activa **auto-aim** hacia el objetivo cercano y dispara una carga.
+- El apuntado manual se calcula desde la posición real de Volt, no desde el centro del canvas, para que la dirección del stick sea más natural.
+- Se añade una guía visual de apuntado y un pequeño feedback del auto-aim.
+- Movimiento, básico, Sobrecarga y Tormenta se recolocan en zonas propias del cockpit inferior; en pantallas especialmente estrechas se reduce opacidad antes de permitir que un control tape a otro.
+- Los botones principales y navegación móvil reciben más profundidad, respuesta al toque y jerarquía visual.
+- Las mejoras reciben rarezas visuales: **común, poco común, rara, épica y legendaria**. Por ahora la rareza es presentación y no altera probabilidades ni balance.
+- Las cartas de mejora aparecen en secuencia con animación de escala/glint en lugar de mostrarse todas a la vez.
+- En móvil las tres opciones se presentan en una fila compacta para mantenerlas visibles simultáneamente sin scroll.
+- `BUILD 0.9.4` y `?v=0.9.4` identifican y fuerzan la carga de esta versión.
 
 ### Hotfix 0.9.3 — navegación robusta + cache busting
 
@@ -45,7 +58,7 @@ Prototipo de action-roguelite para móvil. La dirección actual es **vertical / 
 | --- | --- | --- |
 | Mover | WASD / flechas | Joystick izquierdo |
 | Apuntar ataque | Ratón | Joystick derecho |
-| Ataque básico | Clic mantenido | Mantener/desplazar joystick de ataque |
+| Ataque básico | Clic mantenido | Arrastrar para apuntar y soltar para disparar · toque corto = auto-aim |
 | Habilidad | E | Arrastrar Sobrecarga y soltar |
 | Ultimate | Q | Arrastrar Tormenta y soltar |
 | Pausa | P / Escape | Botón Pausa |
@@ -98,11 +111,12 @@ La lógica de `engine.js` no se ha modificado en esta pasada. El entorno del asi
 
 ## Próximo paso al retomar
 
-**Probar la build 0.9.3 en móvil real empezando por el flujo completo `inicio → lobby → mapa → desplegar`.** La pantalla inicial debe mostrar `BUILD 0.9.3`. Si ese recorrido es estable, evaluar:
+**Probar la build 0.9.4 en móvil real.** La pantalla inicial debe mostrar `BUILD 0.9.4`. Prioridades del test:
 
 - comodidad y tamaño del joystick izquierdo,
 - precisión del joystick de ataque,
-- si disparar al mantener el joystick derecho se siente natural,
+- si apuntar y disparar al soltar elimina los disparos accidentales,
+- si el toque corto con auto-aim elige objetivos de forma natural,
 - colocación de Sobrecarga y Tormenta,
 - posibles cortes o solapes restantes,
 - tamaño útil de la arena,
