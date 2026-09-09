@@ -1,20 +1,70 @@
 // Pure simulation. Seconds, logical pixels and fixed steps; no DOM or audio.
-export const WIDTH = 1200, HEIGHT = 740, TOTAL_SECTORS = 5, TOTAL_WAVES = TOTAL_SECTORS, STEP = 1 / 120;
-const PI = Math.PI, ARC = PI * 100;
-export const PATH_LENGTH = 2790 + 2 * ARC;
+// 0.9.7: the logical world is portrait-native instead of a landscape arena squeezed into mobile.
+export const WIDTH = 720, HEIGHT = 1120, TOTAL_SECTORS = 5, TOTAL_WAVES = TOTAL_SECTORS, STEP = 1 / 120;
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+
+const PATH_CONTROL_POINTS = [
+  [360, 82],
+  [178, 205],
+  [530, 340],
+  [205, 505],
+  [520, 655],
+  [255, 775],
+  [360, 842],
+];
+
+function catmullRom(p0, p1, p2, p3, t) {
+  const t2 = t * t, t3 = t2 * t;
+  return {
+    x: .5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2*p0[0] - 5*p1[0] + 4*p2[0] - p3[0]) * t2 + (-p0[0] + 3*p1[0] - 3*p2[0] + p3[0]) * t3),
+    y: .5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2*p0[1] - 5*p1[1] + 4*p2[1] - p3[1]) * t2 + (-p0[1] + 3*p1[1] - 3*p2[1] + p3[1]) * t3),
+  };
+}
+
+function buildPathSamples() {
+  const samples = [];
+  const points = PATH_CONTROL_POINTS;
+  const steps = 28;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+    for (let j = 0; j < steps; j++) {
+      if (i > 0 && j === 0) continue;
+      const t = j / steps;
+      samples.push(catmullRom(p0, p1, p2, p3, t));
+    }
+  }
+  samples.push({ x: points.at(-1)[0], y: points.at(-1)[1] });
+
+  let distance = 0;
+  for (let i = 0; i < samples.length; i++) {
+    if (i) distance += Math.hypot(samples[i].x - samples[i - 1].x, samples[i].y - samples[i - 1].y);
+    samples[i].d = distance;
+  }
+  return samples;
+}
+
+const PATH_SAMPLES = buildPathSamples();
+export const PATH_LENGTH = PATH_SAMPLES.at(-1).d;
 
 export function pathAt(d) {
   d = clamp(d, 0, PATH_LENGTH);
-  if (d < 900) return { x: 130 + d, y: 130, a: 0 };
-  d -= 900;
-  if (d < ARC) { const a = -PI / 2 + d / 100; return { x: 1030 + Math.cos(a) * 100, y: 230 + Math.sin(a) * 100, a: a + PI / 2 }; }
-  d -= ARC;
-  if (d < 900) return { x: 1030 - d, y: 330, a: PI };
-  d -= 900;
-  if (d < ARC) { const a = -PI / 2 - d / 100; return { x: 130 + Math.cos(a) * 100, y: 430 + Math.sin(a) * 100, a: a - PI / 2 }; }
-  d -= ARC;
-  return { x: 130 + d, y: 530, a: 0 };
+  let lo = 0, hi = PATH_SAMPLES.length - 1;
+  while (lo < hi - 1) {
+    const mid = (lo + hi) >> 1;
+    if (PATH_SAMPLES[mid].d <= d) lo = mid;
+    else hi = mid;
+  }
+  const a = PATH_SAMPLES[lo], b = PATH_SAMPLES[Math.min(PATH_SAMPLES.length - 1, lo + 1)];
+  const span = Math.max(.0001, b.d - a.d);
+  const t = clamp((d - a.d) / span, 0, 1);
+  return {
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+    a: Math.atan2(b.y - a.y, b.x - a.x),
+  };
 }
 
 export function pathAtLane(d, lane = 0, totalLanes = 1) {
@@ -140,12 +190,12 @@ export const ROUTES = {
 };
 
 export const UPGRADES = [
-  { id: 'chain', name: 'Arco doble', icon: '↯', text: 'Cada rayo del Tridente salta a un vecino adicional.', apply: s => s.buster.basic.chain++ },
-  { id: 'power', name: 'Alto voltaje', icon: '+', text: '+25 % de daño a los tres rayos del básico.', apply: s => s.buster.basic.damage *= 1.25 },
-  { id: 'rapid', name: 'Bobina rápida', icon: '»', text: 'La munición recarga un 20 % más rápido y el Tridente dispara un 12 % más rápido.', apply: s => { s.buster.basic.ammoReload /= 1.2; s.buster.basic.interval /= 1.12; } },
-  { id: 'blast', name: 'Ruptura reactiva', icon: '✳', text: 'Cada rotura inflige 16 de daño a sus vecinos.', apply: s => s.build.blast += 16 },
-  { id: 'pulse', name: 'Condensador', icon: '↻', text: 'La habilidad recarga un 25 % más rápido y golpea a dos objetivos más.', apply: s => { s.buster.ability.cooldown *= .75; s.buster.ability.targets += 2; } },
-  { id: 'force', name: 'Onda de choque', icon: '≋', text: 'Las roturas empujan un 60 % más y la habilidad hace +25 % de daño.', apply: s => { s.buster.basic.push *= 1.6; s.buster.ability.damage *= 1.25; } },
+  { id: 'chain', category: 'general', name: 'Arco doble', icon: '↯', text: 'Cada rayo del Tridente salta a un vecino adicional.', apply: s => s.buster.basic.chain++ },
+  { id: 'power', category: 'general', name: 'Alto voltaje', icon: '+', text: '+25 % de daño a los tres rayos del básico.', apply: s => s.buster.basic.damage *= 1.25 },
+  { id: 'rapid', category: 'general', name: 'Bobina rápida', icon: '»', text: 'La munición recarga un 20 % más rápido y el Tridente dispara un 12 % más rápido.', apply: s => { s.buster.basic.ammoReload /= 1.2; s.buster.basic.interval /= 1.12; } },
+  { id: 'blast', category: 'general', name: 'Ruptura reactiva', icon: '✳', text: 'Cada rotura inflige 16 de daño a sus vecinos.', apply: s => s.build.blast += 16 },
+  { id: 'pulse', category: 'ability', abilityId: 'overload', name: 'Condensador', icon: '↻', text: 'Sobrecarga recarga un 25 % más rápido y golpea a dos objetivos más.', apply: s => { s.buster.ability.cooldown *= .75; s.buster.ability.targets += 2; } },
+  { id: 'force', category: 'ability', abilityId: 'overload', name: 'Onda de choque', icon: '≋', text: 'Sobrecarga hace +25 % de daño y las roturas empujan un 60 % más.', apply: s => { s.buster.basic.push *= 1.6; s.buster.ability.damage *= 1.25; } },
 ];
 
 export function createGame(options = {}) {
@@ -160,8 +210,8 @@ export function createGame(options = {}) {
     sectorTime: 0,
     waveTime: 0,
     head: 800,
-    player: { x: 600, y: 625 },
-    aim: { x: 600, y: 330 },
+    player: { x: 360, y: 985 },
+    aim: { x: 360, y: 640 },
     core: { hp: 100, maxHp: 100, hitCooldown: 0, flash: 0 },
     buster,
     run: {
@@ -223,7 +273,7 @@ export function spawnSector(s) {
   s.phase = 'playing';
   s.sectorTime = 0;
   s.waveTime = 0;
-  s.head = 1220 + 80 * (s.run.sector - 1);
+  s.head = Math.min(PATH_LENGTH * .55, 610 + 42 * (s.run.sector - 1));
   s.bullets = [];
   s.hazards = [];
   s.playerDebuff = 0;
@@ -233,10 +283,10 @@ export function spawnSector(s) {
   s.comboTimer = 0;
   s.ammo = s.buster.basic.ammoMax;
   s.ammoTimer = 0;
-  s.player = { x: 600, y: 625 };
+  s.player = { x: 360, y: 985 };
 
   const count = config.segments + config.segmentBonus;
-  const nestPositions = [{ x: 310, y: 255 }, { x: 600, y: 445 }, { x: 890, y: 255 }];
+  const nestPositions = [{ x: 180, y: 390 }, { x: 535, y: 535 }, { x: 220, y: 690 }];
   s.objectives = Array.from({ length: config.nestCount || 0 }, (_, i) => ({
     id: `nest-${s.uid++}`,
     type: 'nest',
@@ -658,8 +708,8 @@ export function update(s, dt, input = {}) {
   if (!s.comboTimer) s.combo = 0;
 
   const mx = input.x || 0, my = input.y || 0, len = Math.max(1, Math.hypot(mx, my));
-  s.player.x = clamp(s.player.x + mx / len * 330 * ruleEffects.move * dt, 45, 1155);
-  s.player.y = clamp(s.player.y + my / len * 330 * ruleEffects.move * dt, 570, 650);
+  s.player.x = clamp(s.player.x + mx / len * 350 * ruleEffects.move * dt, 52, WIDTH - 52);
+  s.player.y = clamp(s.player.y + my / len * 350 * ruleEffects.move * dt, 865, HEIGHT - 66);
   if (input.aim) s.aim = { ...input.aim };
 
   if (input.fire && s.fireTimer <= 0 && s.ammo > 0) {
